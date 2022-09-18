@@ -1,7 +1,6 @@
 # varc (Volatile Artifact Collector) #
 
-### About ###
-This tool collects a snapshot of volatile data from a system.
+varc collects a snapshot of volatile data from a system.
 It tells you what is happening on a system, and is of particular use when investigating a security incident.
 
 It creates a zip, which contains a number of different pieces of data to understand what is happening on a system:
@@ -40,7 +39,12 @@ optional arguments:
   --dump-extract  Extract process memory dumps, which can be slow
 ```
 
-### Using as a library ###
+### Using as a Python library ###
+
+Install from pip with:
+```
+pip3 install varc
+```
 
 Or alternatively, clone this repository then install with:
 ```
@@ -85,10 +89,10 @@ Our commercial tool [Cado Response](https://www.cadosecurity.com/platform/) addi
 Here is an example of varc output for a Lambda function running xmrig, viewed in [Cado Community Edition](https://www.cadosecurity.com/cado-community-edition/):
 ![](docs/varc.png)
 
-### License and Contributing###
-We’d love any Pull Requests or Bug Reports!
+### License and Contributing ###
+We would love any Pull Requests or Bug Reports!
 
-This is licensed under the GPL. Please contact us if this doesn’t work for your use case - we may be able to alternatively license under a non-copyleft license such as the Apache License. We're friendly!
+This is licensed under the GPL. Please contact us if this does not work for your use case - we may be able to alternatively license under a non-copyleft license such as the Apache License. We're friendly!
 As this software is licensed under the GPL and used in our commercial product, we ask any contributors to sign a simple Contributor License Agreement (CLA). 
 
 
