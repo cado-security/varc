@@ -62,7 +62,7 @@ class BaseSystem:
     def get_network(self) -> List[str]:
         """Get active network connections
             
-        :return: List of netflow logs
+        :return: List of netsta logs
         :rtype List[string]
         """
         network = []
@@ -229,8 +229,8 @@ class BaseSystem:
                 with zip_file.open(f"{key}.json", 'w') as json_file:
                     json_file.write(value.encode())
             if self.network_log:
-                logging.info("Adding Netflow Data")
-                with zip_file.open("netflow.log", 'w') as network_file:
+                logging.info("Adding Netstat Data")
+                with zip_file.open("netstat.log", 'w') as network_file:
                     network_file.write("\r\n".join(self.network_log).encode())
             if self.dump_loaded_files:
                 for file_path in self.dumped_files:
