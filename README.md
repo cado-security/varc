@@ -7,7 +7,6 @@ It creates a zip, which contains a number of different pieces of data to underst
 - JSON files e.g. running processes and what network connections they are making
 - Memory of running proccesses, on a per-process basis. This is also carved to extract log and text data from memory
 - Netstat data of active connections
-- Binary blob data, e.g. The allocated memory of running processes, along with extracted log events in a log format.
 - The contents of open files, for example running binaries
 
 We have successfully executed it across:
