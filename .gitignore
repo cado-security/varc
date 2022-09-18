@@ -1,0 +1,10 @@
+
+*.pyc
+*.zip
+*.log
+build/
+dist/
+*.spec
+.DS_Store
+varc.egg-info/*
+.vscode/*

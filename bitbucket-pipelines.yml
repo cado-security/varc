@@ -1,0 +1,59 @@
+image: atlassian/default-image:2
+
+pipelines:
+  default:
+    - parallel:
+
+      - step:
+          name: Build and test
+          image: centos:centos7 # Intentionally old
+          script:
+            - yum -y install python3
+            - yum -y install gcc python3-devel upx
+            - pip3 install --upgrade pip
+            - pip3 install pyinstaller
+            - chmod +x ./release/generate_linux_binary.sh
+            - ./release/generate_linux_binary.sh
+            - chmod +x ./dist/varc
+            - ./dist/varc #check it doesn't return non 0 exit status, i.e. crash
+            - python3 varc.py # we should also be able to just run it
+            - python3 varc.py --skip-memory # check some flags work
+            - python3 -m unittest tests.test_shared.TestBaseCases
+            - python3 -m unittest tests.test_linux.test_base
+            - python3 -m unittest tests.test_import.TestImport
+          artifacts:
+            - "*.zip"
+            - dist/varc
+
+      - step:
+          name: Test Debian Linux
+          image: python:3.9.11-bullseye
+          script:
+            - uname -a # check version
+            - pip3 install -r requirements.txt
+            - python3 varc.py
+          artifacts:
+            - "*.zip"
+
+      - step:
+          name: Test Alpine Linux
+          image: python:3.9.11-alpine
+          script:
+            - uname -a # check version
+            - apk update && apk add python3-dev gcc libc-dev linux-headers libmagic
+            - pip3 install -r requirements.txt
+            - python3 varc.py
+          artifacts:
+            - "*.zip"
+
+      - step:
+          image: python:3.6
+          name: Static Checks
+          caches:
+            - pip
+          script:
+            - pip3 install --upgrade pip
+            - pip3 install -r ./requirements.txt # pip install for anything we are going to typecheck so imports resolves
+            - pip3 install flake8 mypy
+            - mypy --config-file ./ci/mypy.cfg ./
+            - flake8 --config ./ci/flake8.cfg
