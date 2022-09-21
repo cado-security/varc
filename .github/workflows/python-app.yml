@@ -1,7 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
-name: Python application
+name: Default CI Pipeline
 
 on:
   push:
@@ -14,26 +11,54 @@ permissions:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
-
+    runs-on: centos:centos7 # Intentionally old
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Install dependencies
+    - name: Set up Environment
+      yum -y install python3
+      yum -y install gcc python3-devel upx
+      pip3 install --upgrade pip
+      pip3 install pyinstaller
+      pip3 install -r ./requirements.txt # pip install for anything we are going to typecheck so imports resolves
+
+    - name: Unit Tests
       run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
+        chmod +x ./release/generate_linux_binary.sh
+        ./release/generate_linux_binary.sh
+        chmod +x ./dist/varc
+        ./dist/varc #check it doesn't return non 0 exit status, i.e. crash
+        python3 varc.py # we should also be able to just run it
+        python3 varc.py --skip-memory # check some flags work
+        python3 -m unittest tests.test_shared.TestBaseCases
+        python3 -m unittest tests.test_linux.test_base
+        python3 -m unittest tests.test_import.TestImport
+
+
+    - name: Static Checks
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        pip3 install flake8 mypy
+        mypy --config-file ./ci/mypy.cfg ./
+        flake8 --config ./ci/flake8.cfg
     - name: Test with pytest
       run: |
         pytest
+  
+  build:
+    runs-on: python:3.9.11-bullseye
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Environment
+      pip3 install -r ./requirements.txt
+    - name: Unit Tests
+      run: |
+        python3 varc.py
+  
+  build:
+    runs-on: python:3.9.11-alpine
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Environment
+      pip3 install -r ./requirements.txt
+    - name: Unit Tests
+      run: |
+        python3 varc.py
