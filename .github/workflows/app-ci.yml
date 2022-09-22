@@ -43,9 +43,9 @@ jobs:
         pip3 install --upgrade pip
         pip3 install -r ./requirements.txt
         yum -y install gcc python3-devel upx
-        pip3 install pyinstaller
     - name: Build & Run Binary
       run: |
+        pip3 install pyinstaller
         chmod +x ./release/generate_linux_binary.sh
         ./release/generate_linux_binary.sh
         chmod +x ./dist/varc
@@ -53,7 +53,7 @@ jobs:
     - name: Run varc Python
       run: |
         - python3 varc.py
-        - python3 varc.py --skip-memory
+        # - python3 varc.py --skip-memory
 
   debian:
     runs-on: ubuntu-latest
