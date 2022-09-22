@@ -87,7 +87,8 @@ jobs:
     - name: Set up Environment
       run: |
         python -m pip install --upgrade pip
-        apk update && apk add python3-dev gcc libc-dev linux-headers libmagicapk update && apk add python3-dev gcc libc-dev linux-headers libmagic
+        apk update
+        apk add python3-dev gcc libc-dev linux-headers libmagic
         pip3 install -r ./requirements.txt
     - name: Running varc
       run: |
