@@ -62,6 +62,28 @@ jobs:
         pip3 install flake8 mypy
         mypy --config-file ./ci/mypy.cfg ./
         flake8 --config ./ci/flake8.cfg
+  
+  compiled:
+    runs-on: ubuntu-latest
+    container:
+      image: centos:centos7  # Intentionally old
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up environment
+      run: |
+        yum -y install python3
+        pip3 install --upgrade pip
+        pip3 install -r ./requirements.txt
+        yum -y install gcc python3-devel upx
+        pip3 install pyinstaller
+    - name: Compile
+      run: |
+        chmod +x ./release/generate_linux_binary.sh
+        ./release/generate_linux_binary.sh
+        chmod +x ./dist/varc
+        ./dist/varc #check it doesn't return non 0 exit status, i.e. crash
+        - python3 varc.py # we should also be able to just run it
+        - python3 varc.py --skip-memory # check some flags work
 
   debian:
     runs-on: ubuntu-latest
@@ -86,6 +108,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Set up Environment
       run: |
+        uname -a # check version
         python -m pip install --upgrade pip
         apk update
         apk add python3-dev gcc libc-dev linux-headers libmagic
