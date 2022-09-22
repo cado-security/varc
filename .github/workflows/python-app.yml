@@ -41,7 +41,7 @@ jobs:
   #       pip3 install flake8 mypy
   #       mypy --config-file ./ci/mypy.cfg ./
   #       flake8 --config ./ci/flake8.cfg
-  build:
+  default:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
