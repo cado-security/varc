@@ -10,40 +10,61 @@ permissions:
   contents: read
 
 jobs:
+  # build:
+  #   runs-on: centos:centos7  # Intentionally old
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Set up Environment
+  #     run: |
+  #       yum -y install python3
+  #       yum -y install gcc python3-devel upx
+  #       pip3 install --upgrade pip
+  #       pip3 install pyinstaller
+  #       pip3 install -r ./requirements.txt # pip install for anything we are going to typecheck so imports resolves
+
+  #   - name: Generate Linux Binary
+  #     run: |
+  #       chmod +x ./release/generate_linux_binary.sh
+  #       ./release/generate_linux_binary.sh
+  #       chmod +x ./dist/varc
+  #       ./dist/varc #check it doesn't return non 0 exit status, i.e. crash
+  #     path: dist/varc
+
+  #   - name: Unit Tests
+  #     run: |
+  #       python3 varc.py # we should also be able to just run it
+  #       python3 varc.py --skip-memory # check some flags work
+  #       python3 -m unittest tests
+
+  #   - name: Static Checks
+  #     run: |
+  #       pip3 install flake8 mypy
+  #       mypy --config-file ./ci/mypy.cfg ./
+  #       flake8 --config ./ci/flake8.cfg
   build:
-    runs-on: centos:centos7 # Intentionally old
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
     - name: Set up Environment
       run: |
-        yum -y install python3
-        yum -y install gcc python3-devel upx
-        pip3 install --upgrade pip
-        pip3 install pyinstaller
-        pip3 install -r ./requirements.txt # pip install for anything we are going to typecheck so imports resolves
-
+        python -m pip install --upgrade pip
+        pip3 install -r ./requirements.txt
     - name: Unit Tests
       run: |
-        chmod +x ./release/generate_linux_binary.sh
-        ./release/generate_linux_binary.sh
-        chmod +x ./dist/varc
-        ./dist/varc #check it doesn't return non 0 exit status, i.e. crash
         python3 varc.py # we should also be able to just run it
         python3 varc.py --skip-memory # check some flags work
-        python3 -m unittest tests.test_shared.TestBaseCases
-        python3 -m unittest tests.test_linux.test_base
-        python3 -m unittest tests.test_import.TestImport
-
+        python3 -m unittest tests
 
     - name: Static Checks
       run: |
         pip3 install flake8 mypy
         mypy --config-file ./ci/mypy.cfg ./
         flake8 --config ./ci/flake8.cfg
-    - name: Test with pytest
-      run: |
-        pytest
-  
+
   # build:
   #   runs-on: python:3.9.11-bullseye
   #   steps:
