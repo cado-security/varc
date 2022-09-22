@@ -17,7 +17,7 @@ setup(
     author='Cado Security',
     author_email='varc@cadosecurity.com',
     url='https://github.com/cado-security/varc',
-    download_url=f'https://github.com/cado-security/varc/archive/refs/heads/main.zip',
+    download_url='https://github.com/cado-security/varc/archive/refs/heads/main.zip',
     py_modules=['varc'],
     install_requires=['psutil', 'mss', 'tqdm', 'pymem'],
     packages=find_packages()
