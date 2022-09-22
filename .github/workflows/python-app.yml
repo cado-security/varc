@@ -41,6 +41,7 @@ jobs:
   #       pip3 install flake8 mypy
   #       mypy --config-file ./ci/mypy.cfg ./
   #       flake8 --config ./ci/flake8.cfg
+
   default:
     runs-on: ubuntu-latest
     steps:
@@ -73,13 +74,14 @@ jobs:
   #     run: |
   #       python3 varc.py
   
-  # build:
-  #   runs-on: python:3.9.11-alpine
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Set up Environment
-  #     run: |
-  #       pip3 install -r ./requirements.txt
-  #   - name: Unit Tests
-  #     run: |
-  #       python3 varc.py
+  alpine:
+    runs-on: python:3.9.11-alpine
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Environment
+      run: |
+        python -m pip install --upgrade pip
+        pip3 install -r ./requirements.txt
+    - name: Unit Tests
+      run: |
+        python3 varc.py
