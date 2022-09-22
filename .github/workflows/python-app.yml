@@ -83,7 +83,9 @@ jobs:
     - name: Set up Environment
       run: |
         python -m pip install --upgrade pip
+        apk update && apk add python3-dev gcc libc-dev linux-headers libmagic
         pip3 install -r ./requirements.txt
-    - name: Unit Tests
+    - name: Running varc
       run: |
+        uname -a # check version
         python3 varc.py
