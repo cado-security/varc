@@ -63,16 +63,20 @@ jobs:
         mypy --config-file ./ci/mypy.cfg ./
         flake8 --config ./ci/flake8.cfg
 
-  # build:
-  #   runs-on: python:3.9.11-bullseye
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Set up Environment
-  #     run: |
-  #       pip3 install -r ./requirements.txt
-  #   - name: Unit Tests
-  #     run: |
-  #       python3 varc.py
+  debian:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.11-bullseye
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Environment
+      run: |
+        python -m pip install --upgrade pip
+        pip3 install -r ./requirements.txt
+    - name: Running varc
+      run: |
+        uname -a # check version
+        python3 varc.py
   
   alpine:
     runs-on: ubuntu-latest
@@ -83,7 +87,7 @@ jobs:
     - name: Set up Environment
       run: |
         python -m pip install --upgrade pip
-        apk update && apk add python3-dev gcc libc-dev linux-headers libmagic
+        apk update && apk add python3-dev gcc libc-dev linux-headers libmagicapk update && apk add python3-dev gcc libc-dev linux-headers libmagic
         pip3 install -r ./requirements.txt
     - name: Running varc
       run: |
