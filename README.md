@@ -1,4 +1,6 @@
 # varc (Volatile Artifact Collector) #
+![ci](https://github.com/cado-security/varc/actions/workflows/python-app.yml/badge.svg?branch=main)
+[![PyPI version](https://badge.fury.io/py/varc.svg)](https://badge.fury.io/py/varc)
 
 varc collects a snapshot of volatile data from a system.
 It tells you what is happening on a system, and is of particular use when investigating a security incident.
@@ -88,10 +90,11 @@ Our commercial tool [Cado Response](https://www.cadosecurity.com/platform/) addi
 Here is an example of varc output for a Lambda function running xmrig, viewed in [Cado Community Edition](https://www.cadosecurity.com/cado-community-edition/):
 ![](docs/varc.png)
 
-### License and Contributing ###
-We would love any Pull Requests or Bug Reports!
-
+### License ###
 This is licensed under the GPL. Please contact us if this does not work for your use case - we may be able to alternatively license under a non-copyleft license such as the Apache License. We're friendly!
 As this software is licensed under the GPL and used in our commercial product, we ask any contributors to sign a simple Contributor License Agreement (CLA). 
+
+### License ###
+We would love any Pull Requests or Bug Reports!
 
 

@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  default:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Set up Environment
+      run: |
+        python -m pip install --upgrade pip
+        pip3 install -r ./requirements.txt
+    - name: Unit Tests
+      run: |
+        python3 -m unittest discover tests
+    - name: Static Checks
+      run: |
+        pip3 install flake8 mypy
+        mypy --config-file ./ci/mypy.cfg ./
+        flake8 --config ./ci/flake8.cfg
+  
+  compiled:
+    runs-on: ubuntu-latest
+    container:
+      image: centos:centos7  # Intentionally old
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup environment
+      run: |
+        yum -y install python3
+        pip3 install --upgrade pip
+        pip3 install -r ./requirements.txt
+        yum -y install gcc python3-devel upx
+    - name: Build & Run Binary
+      run: |
+        pip3 install pyinstaller
+        chmod +x ./release/generate_linux_binary.sh
+        ./release/generate_linux_binary.sh
+        chmod +x ./dist/varc
+        ./dist/varc # check it doesn't return non 0 exit status, i.e. crash
+
+  centos:
+    runs-on: ubuntu-latest
+    container:
+      image: centos:centos7  # Intentionally old
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Environment
+      run: |
+        cat /etc/os-release
+        yum -y install python3
+        pip3 install --upgrade pip
+        pip3 install -r ./requirements.txt
+        yum -y install gcc python3-devel upx
+    - name: Run varc Python
+      run: |
+        python3 varc.py
+
+  debian:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.11-bullseye
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Environment
+      run: |
+        cat /etc/os-release
+        python -m pip install --upgrade pip
+        pip3 install -r ./requirements.txt
+    - name: Run varc Python
+      run: |
+        python3 varc.py
+  
+  alpine:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.11-alpine
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Environment
+      run: |
+        cat /etc/os-release
+        python -m pip install --upgrade pip
+        apk update
+        apk add python3-dev gcc libc-dev linux-headers libmagic
+        pip3 install -r ./requirements.txt
+    - name: Run varc Python
+      run: |
+        python3 varc.py
+  
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Setup Environment
+      run: |
+        pip3 install -r ./requirements.txt
+    - name: Run varc Python
+      run: |
+        python3 varc.py
+  
+  macos:
+    runs-on: macos-12
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.10'
+    - name: Setup Environment
+      run: |
+        pip3 install -r ./requirements.txt
+    - name: Run varc Python
+      run: |
+        python3 varc.py
