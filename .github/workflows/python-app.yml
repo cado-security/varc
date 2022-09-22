@@ -98,16 +98,19 @@ jobs:
     - name: Running varc
       run: |
         uname -a # check version
+        cat /etc/os-release
         python3 varc.py
   
   alpine:
-    using: docker
-    image: python:3.9.11-alpine
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.11-alpine
     steps:
     - uses: actions/checkout@v3
     - name: Set up Environment
       run: |
         uname -a # check version
+        cat /etc/os-release
         python -m pip install --upgrade pip
         apk update
         apk add python3-dev gcc libc-dev linux-headers libmagic
