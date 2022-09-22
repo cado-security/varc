@@ -75,7 +75,9 @@ jobs:
   #       python3 varc.py
   
   alpine:
-    runs-on: python:3.9.11-alpine
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9.11-alpine
     steps:
     - uses: actions/checkout@v3
     - name: Set up Environment
