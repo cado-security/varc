@@ -1,8 +1,6 @@
 # varc (Volatile Artifact Collector) #
-<p align="center">
 ![ci](https://github.com/cado-security/varc/actions/workflows/python-app.yml/badge.svg?branch=main)
 [![PyPI version](https://badge.fury.io/py/varc.svg)](https://badge.fury.io/py/varc)
-</p>
 
 varc collects a snapshot of volatile data from a system.
 It tells you what is happening on a system, and is of particular use when investigating a security incident.

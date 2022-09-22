@@ -117,3 +117,6 @@ jobs:
       run: |
         uname -a # check version
         python3 varc.py
+  
+  build:
+    
