@@ -55,10 +55,7 @@ jobs:
         pip3 install -r ./requirements.txt
     - name: Unit Tests
       run: |
-        python3 varc.py # we should also be able to just run it
-        python3 varc.py --skip-memory # check some flags work
         python3 -m unittest tests
-
     - name: Static Checks
       run: |
         pip3 install flake8 mypy
