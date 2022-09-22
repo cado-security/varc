@@ -101,9 +101,8 @@ jobs:
         python3 varc.py
   
   alpine:
-    runs-on: ubuntu-latest
-    container:
-      image: python:3.9.11-alpine
+    using: docker
+    image: python:3.9.11-alpine
     steps:
     - uses: actions/checkout@v3
     - name: Set up Environment
@@ -117,6 +116,3 @@ jobs:
       run: |
         uname -a # check version
         python3 varc.py
-  
-  build:
-    
