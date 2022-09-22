@@ -44,24 +44,24 @@ jobs:
       run: |
         pytest
   
-  build:
-    runs-on: python:3.9.11-bullseye
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Environment
-      run: |
-        pip3 install -r ./requirements.txt
-    - name: Unit Tests
-      run: |
-        python3 varc.py
+  # build:
+  #   runs-on: python:3.9.11-bullseye
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Set up Environment
+  #     run: |
+  #       pip3 install -r ./requirements.txt
+  #   - name: Unit Tests
+  #     run: |
+  #       python3 varc.py
   
-  build:
-    runs-on: python:3.9.11-alpine
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Environment
-      run: |
-        pip3 install -r ./requirements.txt
-    - name: Unit Tests
-      run: |
-        python3 varc.py
+  # build:
+  #   runs-on: python:3.9.11-alpine
+  #   steps:
+  #   - uses: actions/checkout@v3
+  #   - name: Set up Environment
+  #     run: |
+  #       pip3 install -r ./requirements.txt
+  #   - name: Unit Tests
+  #     run: |
+  #       python3 varc.py
