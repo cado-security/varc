@@ -78,6 +78,9 @@ class WindowsSystem(BaseSystem):
             except (TypeError, pymem.exception.CouldNotOpenProcess):
                 logging.warning(f"Could not open process {p_name} (pid {pid}) for reading. Cannot dump this process.")
                 continue
+            except pymem.exception.WinAPIError:
+                logging.warning(f"API error attempting to open process {p_name} (pid {pid}) for reading. Cannot dump this process.")
+                continue
             
             # Dump all pages the process virtual address space
             next_region = 0
