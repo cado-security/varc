@@ -250,7 +250,7 @@ class BaseSystem:
                             logging.warning(f"Skipping file as too large {file_path}")
                         else:
                             try:
-                                zip_file.write(file_path, strip_drive(file_path))
+                                zip_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
                             except PermissionError:
                                 logging.warn(f"Permission denied copying {file_path}")
                     except FileNotFoundError:
