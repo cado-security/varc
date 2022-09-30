@@ -118,7 +118,8 @@ jobs:
     - name: Run varc Python
       run: |
         python3 varc.py
-        ./release/generate_windows_binary.bat
+        cd release
+        generate_windows_binary.bat
     - uses: actions/upload-artifact@v3
       with:
         name: varc
@@ -142,7 +143,8 @@ jobs:
       run: |
         pip3 install pyinstaller
         chmod +x ./release/generate_osx_binary.sh
-        ./release/generate_osx_binary.sh
+        cd release
+        ./generate_osx_binary.sh
         chmod +x ./dist/varc
         ./dist/varc # check it doesn't return non 0 exit status, i.e. crash
     - uses: actions/upload-artifact@v3
