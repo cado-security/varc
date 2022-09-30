@@ -1,4 +1,3 @@
-
 """Every get_ function must return: List[dict]
 
 notepad.exe.mem - Dumped memory
@@ -23,8 +22,7 @@ import time
 
 from varc_core.utils.string_manips import remove_special_characters, strip_drive
 
-
-_MAX_OPEN_FILE_SIZE = 10000000 # 10 Mb max dumped filesize
+_MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
 
 class BaseSystem:
@@ -37,14 +35,15 @@ class BaseSystem:
     :param include_open: 
     :param extract_dumps: 
     """
+
     def __init__(
-        self,
-        process_name: Optional[str] = None,
-        process_id: Optional[int] = None,
-        take_screenshot: bool = True,
-        include_memory: bool = True,
-        include_open: bool = True,
-        extract_dumps: bool = False,
+            self,
+            process_name: Optional[str] = None,
+            process_id: Optional[int] = None,
+            take_screenshot: bool = True,
+            include_memory: bool = True,
+            include_open: bool = True,
+            extract_dumps: bool = False,
     ) -> None:
         self.todays_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
@@ -54,9 +53,10 @@ class BaseSystem:
         self.extract_dumps = extract_dumps
         self.include_memory = include_memory
         self.include_open = include_open
-    
+
         if self.process_name and self.process_id:
-            raise ValueError("Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
+            raise ValueError(
+                "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
         self.zip_path = self.acquire_volatile()
 
     def get_network(self) -> List[str]:
@@ -69,14 +69,23 @@ class BaseSystem:
         try:
             connections = psutil.net_connections()
         except psutil.AccessDenied:
-            logging.error("Access denied attempting to get network connections") # without sudo on osx
+            logging.error("Access denied attempting to get network connections")  # without sudo on osx
             connections = []
+
         for conn in connections:
-            if conn.laddr and conn.raddr:
-                syslog_date: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                process_name: str = psutil.Process(conn.pid).name()
-                log_line = f"{syslog_date} {conn.laddr.ip} {conn.laddr.port} {conn.raddr.ip} {conn.raddr.port} {process_name}"
-                network.append(log_line)
+            syslog_date: str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            process_name: str = psutil.Process(conn.pid).name()
+
+            if not conn.raddr:
+                conn_raddr_ip = "0.0.0.0"  # <-- can expand and modify per OS if needed, I mimicked how windows shows it
+                conn_raddr_port = "0"  # <-- can expand and modify per OS if needed, I mimicked how windows shows it
+            else:
+                conn_raddr_ip = conn.raddr.ip
+                conn_raddr_port = conn.raddr.port
+
+            log_line = f'{syslog_date} {conn.laddr.ip} {conn.laddr.port} {conn_raddr_ip} {conn_raddr_port} {process_name}'
+            network.append(log_line)
+
         return network
 
     def get_processes_dict(self) -> List[dict]:
@@ -112,7 +121,7 @@ class BaseSystem:
             proc_open_files = process.get("open_files", [])
             if proc_open_files:
                 open_files += [open_file.path for open_file in proc_open_files]
-            proc_memory_maps = process.get("memory_maps", []) 
+            proc_memory_maps = process.get("memory_maps", [])
             if proc_memory_maps:
                 mapped_filepaths += [path.path for path in proc_memory_maps]
             proc_exe = process.get("exe", [])
@@ -148,7 +157,7 @@ class BaseSystem:
             # Linux, OSX
             if isinstance(process["cmdline"], List):
                 cmd_line = " ".join(process["cmdline"])
-            connections = []    
+            connections = []
             if "connections" in process:
                 if process["connections"]:
                     for conn in process["connections"]:
@@ -156,16 +165,17 @@ class BaseSystem:
                             log_line = f"{time.time()} {conn.laddr.ip} {conn.laddr.port} {conn.raddr.ip} {conn.raddr.port}"
                             connections.append(log_line)
 
-                    
             memory_maps = process.get("memory_maps", [])
             mapped_filepaths = []
             if memory_maps:
                 mapped_filepaths = [path.path for path in memory_maps]
 
             process_data.append({"Process ID": process["pid"], "Name": process["name"], "Username": process["username"],
-                                "Status": process["status"], "Executable Path": process["exe"], "Command": cmd_line,
-                                "Parent ID": process["ppid"], "Creation Time": creation_time, "Open Files": open_files_str, "Connections": "\r\n".join(connections), "Mapped Filepaths": ",".join(mapped_filepaths)
-                                })
+                                 "Status": process["status"], "Executable Path": process["exe"], "Command": cmd_line,
+                                 "Parent ID": process["ppid"], "Creation Time": creation_time,
+                                 "Open Files": open_files_str, "Connections": "\r\n".join(connections),
+                                 "Mapped Filepaths": ",".join(mapped_filepaths)
+                                 })
         return process_data
 
     def dict_to_json(self, rows: List[dict]) -> str:
@@ -192,7 +202,7 @@ class BaseSystem:
         """
         try:
             with mss.mss() as sct:
-                monitor = sct.monitors[0] # monitors[0] is all connected monitors in one
+                monitor = sct.monitors[0]  # monitors[0] is all connected monitors in one
                 sct_img = sct.grab(monitor)
                 png = mss.tools.to_png(sct_img.rgb, sct_img.size)
                 return png
@@ -220,11 +230,11 @@ class BaseSystem:
         if not output_path:
             output_path = os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
         # strip .zip if in filename as shutil appends to end
-        archive_out =  output_path + ".zip" if not output_path.endswith(".zip") else output_path
+        archive_out = output_path + ".zip" if not output_path.endswith(".zip") else output_path
         self.output_path = output_path
         with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
             if screenshot:
-                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot) 
+                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot)
             for key, value in table_data.items():
                 with zip_file.open(f"{key}.json", 'w') as json_file:
                     json_file.write(value.encode())
