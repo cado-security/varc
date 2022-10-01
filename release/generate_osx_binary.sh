@@ -8,6 +8,8 @@ cd cado-host-python
 
 
 python3 -m pip install --upgrade pip
-python3 -m pip install pyinstaller==4.10
+python3 -m pip install pyinstaller==5.4.1
 python3 -m pip install -r requirements.txt
-python3 -m PyInstaller  --onefile --clean --paths $PATHS --target-arch universal2 varc.py
+# Universal target currently fails
+# python3 -m PyInstaller  --onefile --clean --paths $PATHS --target-arch universal2 varc.py
+python3 -m PyInstaller  --onefile --clean --paths $PATHS varc.py
