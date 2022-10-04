@@ -95,27 +95,30 @@ class LinuxSystem(BaseSystem):
         """Dumps all processes to temp files, adds temp file to output archive then removes the temp file"""
         archive_out = self.output_path
         with zipfile.ZipFile(archive_out, "a", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
-                pid = proc["Process ID"]
-                p_name = proc["Name"]
-                maps = self.parse_mem_map(pid, p_name)
-                if not maps:
-                    continue
-                with NamedTemporaryFile(mode="w+b", buffering=0, delete=True) as tmpfile:
-                    try:
-                        for map in maps:
-                            page_start = map[0]
-                            page_len = map[1] - map[0]
-                            mem_page_content = self.read_bytes(pid, page_start, page_len)
-                            if mem_page_content:
-                                tmpfile.write(mem_page_content)
-                        zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
-                    except PermissionError:
-                        logging.warning(f"Permission denied opening process memory for {p_name} (pid {pid}). Cannot dump this process.")
+            try:
+                for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
+                    pid = proc["Process ID"]
+                    p_name = proc["Name"]
+                    maps = self.parse_mem_map(pid, p_name)
+                    if not maps:
                         continue
-                    except OSError as oserror:
-                        logging.warning(f"Error opening process memory page for {p_name} (pid {pid}). Error was {oserror}. Dump may be incomplete.")
-                        pass
-                    
+                    with NamedTemporaryFile(mode="w+b", buffering=0, delete=True) as tmpfile:
+                        try:
+                            for map in maps:
+                                page_start = map[0]
+                                page_len = map[1] - map[0]
+                                mem_page_content = self.read_bytes(pid, page_start, page_len)
+                                if mem_page_content:
+                                    tmpfile.write(mem_page_content)
+                            zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
+                        except PermissionError:
+                            logging.warning(f"Permission denied opening process memory for {p_name} (pid {pid}). Cannot dump this process.")
+                            continue
+                        except OSError as oserror:
+                            logging.warning(f"Error opening process memory page for {p_name} (pid {pid}). Error was {oserror}. Dump may be incomplete.")
+                            pass
+            except MemoryError:
+                logging.warning("Exceeded available memory, skipping further memory collection")
+                        
 
         logging.info(f"Dumping processing has completed. Output file is located: {archive_out}")
