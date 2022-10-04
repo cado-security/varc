@@ -120,7 +120,7 @@ jobs:
       run: |
         python3 varc.py --skip-memory
         cd release
-        pip3 install pyinstaller=5.0
+        pip3 install pyinstaller==5.0
         ./generate_windows_binary.bat
     - uses: actions/upload-artifact@v3
       with:
