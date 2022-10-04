@@ -50,6 +50,10 @@ jobs:
         ./release/generate_linux_binary.sh
         chmod +x ./dist/varc
         ./dist/varc # check it doesn't return non 0 exit status, i.e. crash
+    - uses: actions/upload-artifact@v3
+      with:
+        name: varc
+        path: ./dist/varc
 
   centos:
     runs-on: ubuntu-latest
@@ -102,6 +106,7 @@ jobs:
   
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
@@ -113,7 +118,14 @@ jobs:
         pip3 install -r ./requirements.txt
     - name: Run varc Python
       run: |
-        python3 varc.py
+        python3 varc.py --skip-memory
+        cd release
+        pip3 install pyinstaller==5.0
+        ./generate_windows_binary.bat
+    - uses: actions/upload-artifact@v3
+      with:
+        name: varc
+        path: ./dist/varc.exe        
   
   macos:
     runs-on: macos-12
@@ -129,3 +141,13 @@ jobs:
     - name: Run varc Python
       run: |
         python3 varc.py
+    - name: Build & Run Binary
+      run: |
+        chmod +x ./release/generate_linux_binary.sh
+        ./release/generate_linux_binary.sh
+        chmod +x ./dist/varc
+        ./dist/varc # check it doesn't return non 0 exit status, i.e. crash
+    - uses: actions/upload-artifact@v3
+      with:
+        name: varc
+        path: ./dist/varc
