@@ -39,6 +39,7 @@ class LinuxSystem(BaseSystem):
         ]
         self.process_vm_readv.restype = ctypes.c_ssize_t
         if self.include_memory:
+            self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
             self.dump_processes()
             if self.extract_dumps:
                 from varc_core.utils import dumpfile_extraction
