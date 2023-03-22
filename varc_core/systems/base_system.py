@@ -53,6 +53,7 @@ class BaseSystem:
         self.extract_dumps = extract_dumps
         self.include_memory = include_memory
         self.include_open = include_open
+        self.screenshot = take_screenshot
 
         if self.process_name and self.process_id:
             raise ValueError(
@@ -242,7 +243,7 @@ class BaseSystem:
                 logging.info("Adding Netstat Data")
                 with zip_file.open("netstat.log", 'w') as network_file:
                     network_file.write("\r\n".join(self.network_log).encode())
-            if self.dump_loaded_files:
+            if self.include_open and self.dumped_files:
                 for file_path in self.dumped_files:
                     logging.info(f"Adding open file {file_path}")
                     try:
