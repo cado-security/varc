@@ -224,18 +224,18 @@ class BaseSystem:
         table_data["processes"] = self.dict_to_json(self.process_info)
         open_files_dict = [{"Open File": open_file} for open_file in self.dumped_files]
         table_data["open_files"] = self.dict_to_json(open_files_dict)
-        if self.take_screenshot:
-            screenshot = self.take_screenshot()
+        if self.screenshot:
+            screenshot_image = self.take_screenshot()
         else:
-            screenshot = None
+            screenshot_image = None
         if not output_path:
             output_path = os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
         # strip .zip if in filename as shutil appends to end
         archive_out = output_path + ".zip" if not output_path.endswith(".zip") else output_path
         self.output_path = output_path
         with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
-            if screenshot:
-                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot)
+            if screenshot_image:
+                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
             for key, value in table_data.items():
                 with zip_file.open(f"{key}.json", 'w') as json_file:
                     json_file.write(value.encode())
