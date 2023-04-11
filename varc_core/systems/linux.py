@@ -39,6 +39,7 @@ class LinuxSystem(BaseSystem):
         ]
         self.process_vm_readv.restype = ctypes.c_ssize_t
         if self.include_memory:
+            self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
             self.dump_processes()
             if self.extract_dumps:
                 from varc_core.utils import dumpfile_extraction
@@ -107,9 +108,21 @@ class LinuxSystem(BaseSystem):
                             for map in maps:
                                 page_start = map[0]
                                 page_len = map[1] - map[0]
-                                mem_page_content = self.read_bytes(pid, page_start, page_len)
-                                if mem_page_content:
-                                    tmpfile.write(mem_page_content)
+                                if page_len > self._MAX_VIRTUAL_PAGE_CHUNK:
+                                    sub_chunk_count, final_chunk_size = divmod(page_len, self._MAX_VIRTUAL_PAGE_CHUNK)
+                                    page_len = int(page_len / sub_chunk_count)
+                                    for sc in range(0, sub_chunk_count):
+                                        mem_page_content = self.read_bytes(pid, page_start, page_len)
+                                        if mem_page_content:
+                                            tmpfile.write(mem_page_content)
+                                        page_start = page_start + self._MAX_VIRTUAL_PAGE_CHUNK
+                                    mem_page_content = self.read_bytes(pid, page_start, final_chunk_size)
+                                    if mem_page_content:
+                                        tmpfile.write(mem_page_content)
+                                else:
+                                    mem_page_content = self.read_bytes(pid, page_start, page_len)
+                                    if mem_page_content:
+                                        tmpfile.write(mem_page_content)
                             zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
                         except PermissionError:
                             logging.warning(f"Permission denied opening process memory for {p_name} (pid {pid}). Cannot dump this process.")
