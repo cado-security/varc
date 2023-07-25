@@ -7,19 +7,20 @@ Try to keep functions working cross-platform where possible
 If it can't work cross-platform, put any platform specific code in the class that inherits this base
     e.g. In linux.py
 """
-import psutil
-import socket
+import json
+import logging
 import os
 import os.path
-import json
-import zipfile
-from typing import List
-from datetime import datetime
-import logging
-from typing import Optional
-import mss
+import socket
 import time
+import zipfile
+from base64 import b64encode
+from datetime import datetime
+from typing import List, Optional
 
+import mss
+import psutil
+import yara
 from varc_core.utils.string_manips import remove_special_characters, strip_drive
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
@@ -44,26 +45,38 @@ class BaseSystem:
             include_memory: bool = True,
             include_open: bool = True,
             extract_dumps: bool = False,
+            yara_file: Optional[str] = None
     ) -> None:
         self.todays_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
         self.timestamp = datetime.timestamp(datetime.now())
         self.process_name = process_name
-        self.process_id = process_id
-        self.extract_dumps = extract_dumps
+        self.process_id = 32460 #process_id
         self.include_memory = include_memory
         self.include_open = include_open
         self.screenshot = take_screenshot
+        self.extract_dumps = extract_dumps
+        self.yara_file = yara_file
 
         if self.process_name and self.process_id:
             raise ValueError(
                 "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
         self.zip_path = self.acquire_volatile()
 
+        if self.yara_file:
+            try:
+                yara_rules = yara.load(self.yara_file)
+                self.yara_rules = yara_rules
+            except:
+                logging.error("Unable to load YARA rules.")
+
+        if self.yara_file and not self.include_memory:
+            logging.info("YARA hits will be recorded only since include_memory is not selected.")
+
     def get_network(self) -> List[str]:
         """Get active network connections
             
-        :return: List of netsta logs
+        :return: List of netstat logs
         :rtype List[string]
         """
         network = []
@@ -188,6 +201,38 @@ class BaseSystem:
         """
         table_dict = {"format": "CadoJsonTable", "rows": rows}
         return json.dumps(table_dict, sort_keys=False, indent=1)
+    
+    def yara_hit_readable(self, match: yara.Match) -> dict:
+        matches: bool = match['matches']
+        rule: str = match['rule']
+        namespace: str = match['namespace']
+        tags: List[str] = match['tags']
+        meta: dict = match['meta']
+        y_strings: List[yara.StringMatch] = match['strings']
+        
+        hits: List[dict] = []
+        for y_hit in y_strings:
+            identifier: str = y_hit.identifier
+            instances = y_hit.instances
+            for inst in instances:
+                hit = {
+                    'matches': matches,
+                    'identifier': identifier,
+                    'matched_data_b64': b64encode(inst.matched_data).decode('utf-8'),
+                    'matched_length': inst.matched_length,
+                    'offset': inst.offset,
+                    'xor_key': inst.xor_key,
+                    'plaintext': inst.plaintext().decode('utf-8')
+                }
+                hits.append(hit)
+        result = {
+            'rule': rule,
+            'namespace': namespace,
+            'tags': tags,
+            'meta': meta,
+            'hits': hits
+        }
+        return result
 
     def get_machine_name(self) -> str:
         """Return machine name without any special characters removed
