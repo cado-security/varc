@@ -34,9 +34,8 @@ class WindowsSystem(BaseSystem):
                 self.yara_results = []
                 self.yara_hit_pids = []
                 self.yara_scan()
-                self.dump_processes()
-            else:
-                self.dump_processes()
+            self.dump_processes()
+
             if self.extract_dumps:
                 from varc_core.utils import dumpfile_extraction
                 dumpfile_extraction.extract_dumps(Path(self.output_path))
