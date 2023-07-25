@@ -21,6 +21,7 @@ from typing import List, Optional
 import mss
 import psutil
 import yara
+from tqdm import tqdm
 from varc_core.utils.string_manips import remove_special_characters, strip_drive
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
@@ -51,12 +52,14 @@ class BaseSystem:
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
         self.timestamp = datetime.timestamp(datetime.now())
         self.process_name = process_name
-        self.process_id = 32460 #process_id
+        self.process_id = process_id
         self.include_memory = include_memory
         self.include_open = include_open
         self.screenshot = take_screenshot
         self.extract_dumps = extract_dumps
         self.yara_file = yara_file
+        self.yara_results = []
+        self.yara_hit_pids = []
 
         if self.process_name and self.process_id:
             raise ValueError(
@@ -303,3 +306,35 @@ class BaseSystem:
                         logging.warning(f"Could not open {file_path} for reading")
 
         return archive_out
+
+
+    def yara_scan(self) -> None:
+        def yara_hit_callback(hit):
+            self.yara_results.append(hit)
+            if self.include_memory:
+                logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
+            else:
+                logging.info(f"YARA rule {hit['rule']} was triggered.")
+            return yara.CALLBACK_CONTINUE
+
+        archive_out = self.output_path
+        for proc in tqdm(self.process_info, desc="YARA scan progess", unit=" procs"):
+            pid = proc["Process ID"]
+            p_name = proc["Name"]
+            logging.info(f"Scanning pid {pid} with YARA")
+            try:
+                matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=yara.CALLBACK_MATCHES, timeout=30)
+                if matches:
+                    self.yara_hit_pids.append(pid)
+            except yara.Error as yerr:
+                logging.error(f"Error scanning process with YARA: {yerr}")
+            
+        if self.yara_results:
+            combined_yara_results = []
+            for yara_hit in self.yara_results:
+                combined_yara_results.append(self.yara_hit_readable(yara_hit))
+            with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr("yara_results.json", self.dict_to_json(combined_yara_results))
+                logging.info("YARA scan results written to yara_results.json in output archive.")
+        else:
+            logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")

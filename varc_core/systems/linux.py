@@ -43,8 +43,6 @@ class LinuxSystem(BaseSystem):
         if self.include_memory:
             self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
             if self.yara_file:
-                self.yara_results = []
-                self.yara_hit_pids = []
                 self.yara_scan()
             self.dump_processes()
             if self.extract_dumps:
