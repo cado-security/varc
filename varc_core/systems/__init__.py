@@ -20,7 +20,7 @@ def acquire_system(
     logging.info(f"Operating System is: {platform}")
     if platform == "linux" or platform == "linux2":
         from varc_core.systems.linux import LinuxSystem
-        return LinuxSystem(include_memory, include_open, extract_dumps)
+        return LinuxSystem(include_memory, include_open, extract_dumps, yara_file)
     elif platform == "darwin":
         from varc_core.systems.osx import OsxSystem
         return OsxSystem(include_memory, include_open, extract_dumps)
