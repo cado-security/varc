@@ -28,7 +28,7 @@ class LinuxSystem(BaseSystem):
         yara_file: Optional[str],
         **kwargs: Any
     ) -> None:
-        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, **kwargs)
+        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, yara_file=yara_file, **kwargs)
         self.libc = ctypes.CDLL("libc.so.6")
         self.process_vm_readv = self.libc.process_vm_readv
         self.process_vm_readv.args = [ # type: ignore
