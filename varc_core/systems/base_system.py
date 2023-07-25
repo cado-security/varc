@@ -211,6 +211,8 @@ class BaseSystem:
         namespace: str = match['namespace']
         tags: List[str] = match['tags']
         meta: dict = match['meta']
+        pid: int = match['pid']
+        proc_name: str = match['proc_name']
         y_strings: List[yara.StringMatch] = match['strings']
         
         hits: List[dict] = []
@@ -233,6 +235,8 @@ class BaseSystem:
             'namespace': namespace,
             'tags': tags,
             'meta': meta,
+            'pid' : pid,
+            'proc_name': proc_name,
             'hits': hits
         }
         return result
@@ -309,7 +313,7 @@ class BaseSystem:
 
 
     def yara_scan(self) -> None:
-        def yara_hit_callback(hit) -> yara.CALLBACK_CONTINUE:
+        def yara_hit_callback(hit: dict) -> yara.CALLBACK_CONTINUE:
             self.yara_results.append(hit)
             if self.include_memory:
                 logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
@@ -326,6 +330,8 @@ class BaseSystem:
                 matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=yara.CALLBACK_MATCHES, timeout=30)
                 if matches:
                     self.yara_hit_pids.append(pid)
+                    self.yara_results[-1]['pid'] = pid
+                    self.yara_results[-1]['proc_name'] = p_name
             except yara.Error as yerr:
                 logging.error(f"Error scanning process with YARA: {yerr}")
             
