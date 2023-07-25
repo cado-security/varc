@@ -1,5 +1,6 @@
 import logging
 from sys import platform
+from typing import Optional
 
 from varc_core.exceptions import MissingOperatingSystemInfo
 from varc_core.systems.base_system import BaseSystem
@@ -8,7 +9,8 @@ from varc_core.systems.base_system import BaseSystem
 def acquire_system(
     include_memory: bool = True,
     include_open: bool = True,
-    extract_dumps: bool = False
+    extract_dumps: bool = False,
+    yara_file:  Optional[str] = None
 ) -> BaseSystem:
     """Returns the either a windows or linux system or osx system
 
@@ -24,6 +26,6 @@ def acquire_system(
         return OsxSystem(include_memory, include_open, extract_dumps)
     elif platform == "win32":
         from varc_core.systems.windows import WindowsSystem
-        return WindowsSystem(include_memory, include_open, extract_dumps)
+        return WindowsSystem(include_memory, include_open, extract_dumps, yara_file)
     else:
         raise MissingOperatingSystemInfo()
