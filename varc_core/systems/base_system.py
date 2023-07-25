@@ -309,7 +309,7 @@ class BaseSystem:
 
 
     def yara_scan(self) -> None:
-        def yara_hit_callback(hit):
+        def yara_hit_callback(hit) -> yara.CALLBACK_CONTINUE:
             self.yara_results.append(hit)
             if self.include_memory:
                 logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
