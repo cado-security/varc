@@ -1,12 +1,13 @@
-from typing import List, Tuple, Any, Optional
-from pathlib import Path
-import zipfile
-from tempfile import NamedTemporaryFile
-from tqdm import tqdm
+import ctypes
 import logging
 import re
-import ctypes
+import zipfile
 from os import sep
+from pathlib import Path
+from tempfile import NamedTemporaryFile
+from typing import Any, List, Optional, Tuple
+
+from tqdm import tqdm
 from varc_core.systems.base_system import BaseSystem
 
 # based on https://stackoverflow.com/questions/48897687/why-does-the-syscall-process-vm-readv-sets-errno-to-success and PymemLinux library
@@ -24,6 +25,7 @@ class LinuxSystem(BaseSystem):
         include_memory: bool,
         include_open: bool,
         extract_dumps: bool,
+        yara_file: Optional[str],
         **kwargs: Any
     ) -> None:
         super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, **kwargs)
@@ -40,6 +42,10 @@ class LinuxSystem(BaseSystem):
         self.process_vm_readv.restype = ctypes.c_ssize_t
         if self.include_memory:
             self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
+            if self.yara_file:
+                self.yara_results = []
+                self.yara_hit_pids = []
+                self.yara_scan()
             self.dump_processes()
             if self.extract_dumps:
                 from varc_core.utils import dumpfile_extraction
@@ -98,6 +104,10 @@ class LinuxSystem(BaseSystem):
         with zipfile.ZipFile(archive_out, "a", compression=zipfile.ZIP_DEFLATED) as zip_file:
             try:
                 for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
+                    # If scanning with YARA, only dump processes if they triggered a rule
+                    if self.yara_hit_pids:
+                        if proc["Process ID"] not in self.yara_hit_pids:
+                            continue
                     pid = proc["Process ID"]
                     p_name = proc["Name"]
                     maps = self.parse_mem_map(pid, p_name)
