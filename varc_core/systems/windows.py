@@ -1,17 +1,19 @@
-import zipfile
-import tempfile
-from tqdm import tqdm
 import logging
-from typing import Tuple, Optional, Any
-from sys import platform
+import tempfile
+import zipfile
 from os import remove as del_file
 from os import sep
 from pathlib import Path
-from varc_core.systems.base_system import BaseSystem
+from sys import platform
+from typing import Any, Optional, Tuple
 
+import yara
+from tqdm import tqdm
+from varc_core.systems.base_system import BaseSystem
 
 if platform == "win32": # dont try to import on linux
    from sys import maxsize
+
    import pymem
 
 class WindowsSystem(BaseSystem):
@@ -23,11 +25,18 @@ class WindowsSystem(BaseSystem):
         include_memory: bool,
         include_open: bool,
         extract_dumps: bool,
+        yara_file: Optional[str],
         **kwargs: Any
     ) -> None:
-        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, **kwargs)
+        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, yara_file=yara_file, **kwargs)
         if self.include_memory:
-            self.dump_processes()
+            if self.yara_file:
+                self.yara_results = []
+                self.yara_hit_pids = []
+                self.yara_scan()
+                self.dump_processes()
+            else:
+                self.dump_processes()
             if self.extract_dumps:
                 from varc_core.utils import dumpfile_extraction
                 dumpfile_extraction.extract_dumps(Path(self.output_path))
@@ -58,13 +67,17 @@ class WindowsSystem(BaseSystem):
         except Exception:
             logging.warning("Failed to read a memory page")
         return page_bytes, next_region
-
+    
     def dump_processes(self) -> None:
         """
         Based on pymem's 'Pattern' module
         """
         archive_out = self.output_path
         for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
+            # If scanning with YARA, only dump processes if they triggered a rule
+            if self.yara_hit_pids:
+                if proc["Process ID"] not in self.yara_hit_pids:
+                    continue
             pid = proc["Process ID"]
             p_name = proc["Name"]
 
@@ -93,3 +106,34 @@ class WindowsSystem(BaseSystem):
                     zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
                 del_file(tmpfile.name)
         logging.info(f"Dumping processing has completed. Output file is located: {archive_out}")
+
+    def yara_scan(self) -> None:
+        def yara_hit_callback(hit):
+            self.yara_results.append(hit)
+            if self.include_memory:
+                logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
+            else:
+                logging.info(f"YARA rule {hit['rule']} was triggered.")
+            return yara.CALLBACK_CONTINUE
+
+        archive_out = self.output_path
+        for proc in tqdm(self.process_info, desc="YARA scan progess", unit=" procs"):
+            pid = proc["Process ID"]
+            p_name = proc["Name"]
+            logging.info(f"Scanning pid {pid} with YARA")
+            try:
+                matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=yara.CALLBACK_MATCHES, timeout=30)
+                if matches:
+                    self.yara_hit_pids.append(pid)
+            except yara.Error as yerr:
+                logging.error(f"Error scanning process with YARA: {yerr}")
+            
+        if self.yara_results:
+            combined_yara_results = []
+            for yara_hit in self.yara_results:
+                combined_yara_results.append(self.yara_hit_readable(yara_hit))
+            with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr("yara_results.json", self.dict_to_json(combined_yara_results))
+                logging.info("YARA scan results written to yara_results.json in output archive.")
+        else:
+            logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
