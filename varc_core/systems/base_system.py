@@ -58,8 +58,8 @@ class BaseSystem:
         self.screenshot = take_screenshot
         self.extract_dumps = extract_dumps
         self.yara_file = yara_file
-        self.yara_results = []
-        self.yara_hit_pids = []
+        self.yara_results: List[dict] = []
+        self.yara_hit_pids: List[int] = []
 
         if self.process_name and self.process_id:
             raise ValueError(
