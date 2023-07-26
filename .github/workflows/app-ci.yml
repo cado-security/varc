@@ -62,8 +62,9 @@ jobs:
         cat /etc/os-release
         yum -y install python3
         pip3 install --upgrade pip
-        pip3 install -r ./requirements.txt
         yum -y install gcc python3-devel upx
+        pip3 install -r ./requirements.txt
+        
     - name: Run varc Python
       run: |
         python3 varc.py
