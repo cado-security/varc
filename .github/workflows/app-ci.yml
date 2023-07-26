@@ -41,7 +41,7 @@ jobs:
       run: |
         yum -y install python3
         pip3 install --upgrade pip
-        yum -y install gcc python3-devel python3-wheel upx
+        yum -y install gcc python3-devel python3-wheel upx libssl-dev
         pip3 install -r ./requirements.txt
     - name: Build & Run Binary
       run: |
