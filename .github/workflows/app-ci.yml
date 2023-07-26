@@ -42,7 +42,7 @@ jobs:
         yum -y install python3
         pip3 install --upgrade pip
         pip3 install -r ./requirements.txt
-        yum -y install gcc python3-devel upx
+        yum -y install gcc python3-devel python3-wheel upx
     - name: Build & Run Binary
       run: |
         pip3 install pyinstaller
@@ -62,7 +62,7 @@ jobs:
         cat /etc/os-release
         yum -y install python3
         pip3 install --upgrade pip
-        yum -y install gcc python3-devel upx
+        yum -y install gcc python3-devel python3-wheel upx
         pip3 install -r ./requirements.txt
         
     - name: Run varc Python
@@ -95,7 +95,7 @@ jobs:
         cat /etc/os-release
         python -m pip install --upgrade pip
         apk update
-        apk add python3-dev gcc libc-dev linux-headers libmagic
+        apk add python3-dev python3-wheel gcc libc-dev linux-headers libmagic
         pip3 install -r ./requirements.txt
     - name: Run varc Python
       run: |

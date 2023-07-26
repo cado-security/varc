@@ -4,5 +4,4 @@ tqdm==4.64.1
 Pymem==1.8.5
 python-magic==0.4.24
 pyinstaller # dont set a version, not compatible
-wheel
 yara-python
