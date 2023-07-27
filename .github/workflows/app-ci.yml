@@ -115,7 +115,8 @@ jobs:
         python -m pip install --upgrade pip
         apk update
         apk add python3-dev py3-wheel gcc libc-dev linux-headers libmagic libressl-dev
-        pip3 install -r ./requirements.txt
+        #pip3 install -r ./requirements.txt
+        python -m pip install -r ./requirements.txt
     - name: Run varc Python
       run: |
         python3 varc.py
