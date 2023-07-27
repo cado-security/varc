@@ -40,9 +40,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Setup environment
       run: |
-        yum -y install python3
-        python3 -m pip install --upgrade pip
-        yum -y install gcc python3-devel python3-wheel upx openssl-devel
+        yum -y install gcc python3-pip python3-devel python3-wheel upx openssl-devel
         python3 -m pip install -r ./requirements.txt
     - name: Build & Run Binary
       run: |
