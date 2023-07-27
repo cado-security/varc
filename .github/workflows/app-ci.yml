@@ -52,6 +52,22 @@ jobs:
         chmod +x ./dist/varc
         ./dist/varc # check it doesn't return non 0 exit status, i.e. crash
 
+  fedora:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup Environment
+      run: |
+        cat /etc/os-release
+        yum -y install gcc python3-devel python3-wheel openssl-devel
+        python3 -m pip install yara-python
+        pip3 install -r ./requirements.txt
+    - name: Run varc Python
+      run: |
+        python3 varc.py
+
   centos:
     runs-on: ubuntu-latest
     container:
@@ -70,7 +86,6 @@ jobs:
         python3 setup.py install
         cd ..
         pip3 install -r ./requirements.txt
-        
     - name: Run varc Python
       run: |
         python3 varc.py
