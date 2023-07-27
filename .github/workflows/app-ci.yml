@@ -35,7 +35,7 @@ jobs:
   compiled:
     runs-on: ubuntu-latest
     container:
-      image: centos:centos7  # Intentionally old
+      image: fedora
     steps:
     - uses: actions/checkout@v3
     - name: Setup environment
