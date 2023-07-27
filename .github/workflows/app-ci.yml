@@ -21,8 +21,8 @@ jobs:
     - name: Set up Environment
       run: |
         sudo apt install -y python3-wheel 
-        python -m pip install --upgrade pip
-        pip3 install -r ./requirements.txt
+        python3 -m pip install --upgrade pip
+        python3 -m pip install -r ./requirements.txt
     - name: Unit Tests
       run: |
         python3 -m unittest discover tests
