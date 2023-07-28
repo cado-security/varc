@@ -16,7 +16,7 @@ import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
-from typing import Any, List, Optional, TypeAlias
+from typing import Any, List, Optional
 
 import mss
 import psutil
