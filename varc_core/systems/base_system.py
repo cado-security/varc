@@ -20,9 +20,14 @@ from typing import List, Optional
 
 import mss
 import psutil
-import yara
 from tqdm import tqdm
 from varc_core.utils.string_manips import remove_special_characters, strip_drive
+
+try:
+    import yara
+    _YARA_AVAILABLE = True
+except ImportError:
+    _YARA_AVAILABLE = False
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
@@ -58,8 +63,8 @@ class BaseSystem:
         self.screenshot = take_screenshot
         self.extract_dumps = extract_dumps
         self.yara_file = yara_file
-        self.yara_results: List[dict] = []
-        self.yara_hit_pids: List[int] = []
+        self.yara_results: Optional[List[dict]] = []
+        self.yara_hit_pids: Optional[List[int]] = []
 
         if self.process_name and self.process_id:
             raise ValueError(
@@ -67,13 +72,16 @@ class BaseSystem:
         self.zip_path = self.acquire_volatile()
 
         if self.yara_file:
-            try:
-                yara_rules = yara.load(self.yara_file)
-                self.yara_rules = yara_rules
-            except:
-                logging.error("Unable to load YARA rules.")
+            if not _YARA_AVAILABLE:
+                logging.error("YARA not available. yara-python is required and is either not installed or not functioning correctly.")
+            else:
+                try:
+                    yara_rules = yara.load(self.yara_file)
+                    self.yara_rules = yara_rules
+                except:
+                    logging.error("Unable to load YARA rules.")
 
-        if self.yara_file and not self.include_memory:
+        if self.yara_file and not self.include_memory and _YARA_AVAILABLE:
             logging.info("YARA hits will be recorded only since include_memory is not selected.")
 
     def get_network(self) -> List[str]:
@@ -320,6 +328,9 @@ class BaseSystem:
             else:
                 logging.info(f"YARA rule {hit['rule']} was triggered.")
             return yara.CALLBACK_CONTINUE
+        
+        if not _YARA_AVAILABLE:
+            return None
 
         archive_out = self.output_path
         for proc in tqdm(self.process_info, desc="YARA scan progess", unit=" procs"):
