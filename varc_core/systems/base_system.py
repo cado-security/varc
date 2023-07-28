@@ -16,7 +16,7 @@ import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, List, Optional, TypeAlias
 
 import mss
 import psutil
@@ -26,8 +26,19 @@ from varc_core.utils.string_manips import remove_special_characters, strip_drive
 try:
     import yara
     _YARA_AVAILABLE = True
+    _YARA_MATCH_TYPE = yara.Match
+    _YARA_STRINGMATCH_TYPE = yara.StringMatch
+    _YARA_ERROR_TYPE = yara.Error
+    _YARA_CALLBACK_CONTINUE_TYPE = yara.CALLBACK_CONTINUE
+    _YARA_CALLBACK_MATCHES_TYPE = yara.CALLBACK_MATCHES
+
 except ImportError:
     _YARA_AVAILABLE = False
+    _YARA_MATCH_TYPE = bool
+    _YARA_STRINGMATCH_TYPE = Any
+    _YARA_ERROR_TYPE = bool
+    _YARA_CALLBACK_CONTINUE_TYPE = bool
+    _YARA_CALLBACK_MATCHES_TYPE = bool
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
@@ -63,8 +74,8 @@ class BaseSystem:
         self.screenshot = take_screenshot
         self.extract_dumps = extract_dumps
         self.yara_file = yara_file
-        self.yara_results: Optional[List[dict]] = []
-        self.yara_hit_pids: Optional[List[int]] = []
+        self.yara_results: List[dict] = []
+        self.yara_hit_pids: List[int] = []
 
         if self.process_name and self.process_id:
             raise ValueError(
@@ -213,7 +224,7 @@ class BaseSystem:
         table_dict = {"format": "CadoJsonTable", "rows": rows}
         return json.dumps(table_dict, sort_keys=False, indent=1)
     
-    def yara_hit_readable(self, match: yara.Match) -> dict:
+    def yara_hit_readable(self, match: _YARA_MATCH_TYPE) -> dict:
         matches: bool = match['matches']
         rule: str = match['rule']
         namespace: str = match['namespace']
@@ -221,7 +232,7 @@ class BaseSystem:
         meta: dict = match['meta']
         pid: int = match['pid']
         proc_name: str = match['proc_name']
-        y_strings: List[yara.StringMatch] = match['strings']
+        y_strings: List[_YARA_STRINGMATCH_TYPE] = match['strings']
         
         hits: List[dict] = []
         for y_hit in y_strings:
@@ -321,13 +332,13 @@ class BaseSystem:
 
 
     def yara_scan(self) -> None:
-        def yara_hit_callback(hit: dict) -> yara.CALLBACK_CONTINUE:
+        def yara_hit_callback(hit: dict) -> _YARA_CALLBACK_CONTINUE_TYPE:
             self.yara_results.append(hit)
             if self.include_memory:
                 logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
             else:
                 logging.info(f"YARA rule {hit['rule']} was triggered.")
-            return yara.CALLBACK_CONTINUE
+            return _YARA_CALLBACK_CONTINUE_TYPE
         
         if not _YARA_AVAILABLE:
             return None
@@ -338,12 +349,12 @@ class BaseSystem:
             p_name = proc["Name"]
             logging.info(f"Scanning pid {pid} with YARA")
             try:
-                matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=yara.CALLBACK_MATCHES, timeout=30)
+                matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=_YARA_CALLBACK_MATCHES_TYPE, timeout=30)
                 if matches:
                     self.yara_hit_pids.append(pid)
                     self.yara_results[-1]['pid'] = pid
                     self.yara_results[-1]['proc_name'] = p_name
-            except yara.Error as yerr:
+            except _YARA_ERROR_TYPE as yerr:
                 logging.error(f"Error scanning process with YARA: {yerr}")
             
         if self.yara_results:
