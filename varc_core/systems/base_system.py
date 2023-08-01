@@ -214,7 +214,8 @@ class BaseSystem:
         table_dict = {"format": "CadoJsonTable", "rows": rows}
         return json.dumps(table_dict, sort_keys=False, indent=1)
     
-    def yara_hit_readable(self, match) -> dict:
+    # match argument of type yara.Match
+    def yara_hit_readable(self, match: Any) -> dict:
         matches: bool = match['matches']
         rule: str = match['rule']
         namespace: str = match['namespace']
@@ -322,7 +323,7 @@ class BaseSystem:
 
 
     def yara_scan(self) -> None:
-        def yara_hit_callback(hit: dict):
+        def yara_hit_callback(hit: dict) -> Any:
             self.yara_results.append(hit)
             if self.include_memory:
                 logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
