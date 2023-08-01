@@ -157,8 +157,8 @@ jobs:
     - name: Set up Environment
       run: |
         sudo apt install -y python3-wheel 
-        python3 -m pip install --upgrade pip
-        python3 -m pip install -r ./requirements.txt
+        sudo python3 -m pip install --upgrade pip
+        sudo python3 -m pip install -r ./requirements.txt
     - name: Run target process which will trigger YARA
       run: |
         python3 ./varc_core/utils/yara_test_target.py &
