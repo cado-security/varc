@@ -77,12 +77,7 @@ jobs:
         cat /etc/os-release
         yum -y install python3
         pip3 install --upgrade pip
-        yum -y install gcc python3-devel python3-wheel upx openssl-devel git
-        git clone --recursive https://github.com/VirusTotal/yara-python
-        cd yara-python
-        python3 setup.py build
-        python3 setup.py install
-        cd ..
+        yum -y install gcc python3-devel upx
         pip3 install -r ./requirements.txt
     - name: Run varc Python
       run: |
