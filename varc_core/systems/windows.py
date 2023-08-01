@@ -7,7 +7,6 @@ from pathlib import Path
 from sys import platform
 from typing import Any, Optional, Tuple
 
-import yara
 from tqdm import tqdm
 from varc_core.systems.base_system import BaseSystem
 
