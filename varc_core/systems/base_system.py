@@ -357,5 +357,3 @@ class BaseSystem:
                 logging.info("YARA scan results written to yara_results.json in output archive.")
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
-
-        time.sleep(3) # troubleshooting

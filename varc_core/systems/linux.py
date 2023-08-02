@@ -40,6 +40,7 @@ class LinuxSystem(BaseSystem):
             ctypes.c_ulong
         ]
         self.process_vm_readv.restype = ctypes.c_ssize_t
+        import faulthandler; faulthandler.enable()
         if self.include_memory:
             self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
             self.own_pid = getpid()
