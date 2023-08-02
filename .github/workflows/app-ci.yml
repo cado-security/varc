@@ -164,4 +164,4 @@ jobs:
         python3 ./varc_core/utils/yara_test_target.py &
     - name: Run VARC with YARA scanning
       run: |
-        sudo python3 varc.py --yara-scan ./varc_core/utils/test_rule.yarac
+        sudo python3 varc.py --skip-open --yara-scan ./varc_core/utils/test_rule.yarac
