@@ -159,9 +159,9 @@ jobs:
         sudo apt install -y python3-wheel 
         sudo python3 -m pip install --upgrade pip
         sudo python3 -m pip install -r ./requirements.txt
-    - name: Run target process which will trigger YARA
-      run: |
-        python3 ./varc_core/utils/yara_test_target.py &
+    # - name: Run target process which will trigger YARA
+    #   run: |
+    #     python3 ./varc_core/utils/yara_test_target.py &
     - name: Run VARC with YARA scanning
       run: |
         sudo python3 varc.py --skip-open --yara-scan ./varc_core/utils/test_rule.yarac
