@@ -2,7 +2,7 @@ import ctypes
 import logging
 import re
 import zipfile
-from os import sep
+from os import getpid, sep
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any, List, Optional, Tuple
@@ -42,6 +42,7 @@ class LinuxSystem(BaseSystem):
         self.process_vm_readv.restype = ctypes.c_ssize_t
         if self.include_memory:
             self._MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # set max number of megabytes that will be read at a time
+            self.own_pid = getpid()
             if self.yara_file:
                 self.yara_scan()
             self.dump_processes()
@@ -104,7 +105,7 @@ class LinuxSystem(BaseSystem):
                 for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
                     # If scanning with YARA, only dump processes if they triggered a rule
                     if self.yara_hit_pids:
-                        if proc["Process ID"] not in self.yara_hit_pids:
+                        if proc["Process ID"] not in self.yara_hit_pids or proc["Process ID"] == self.own_pid:
                             continue
                     pid = proc["Process ID"]
                     p_name = proc["Name"]
