@@ -37,7 +37,7 @@ if __name__ == "__main__":
         "--yara-scan",
         action="store",
         dest="yara_scan",
-        help="Scan process memory using compiled YARA rule file, can be slow.",
+        help="Scan process memory using compiled YARA rule file, which can be slow.",
     )
     # Allow other arguments - needed for unittests
     parser.add_argument('args', nargs=argparse.REMAINDER)
