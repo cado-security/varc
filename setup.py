@@ -1,7 +1,8 @@
-from setuptools import setup, find_packages
-
 # read the contents of your README file
 from pathlib import Path
+
+from setuptools import find_packages, setup
+
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
@@ -19,6 +20,6 @@ setup(
     url='https://github.com/cado-security/varc',
     download_url='https://github.com/cado-security/varc/archive/refs/heads/main.zip',
     py_modules=['varc'],
-    install_requires=['psutil', 'mss', 'tqdm', 'pymem'],
+    install_requires=['psutil', 'mss', 'tqdm', 'pymem', 'yara-python'],
     packages=find_packages()
 )

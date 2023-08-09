@@ -7,20 +7,28 @@ Try to keep functions working cross-platform where possible
 If it can't work cross-platform, put any platform specific code in the class that inherits this base
     e.g. In linux.py
 """
-import psutil
-import socket
+import json
+import logging
 import os
 import os.path
-import json
-import zipfile
-from typing import List
-from datetime import datetime
-import logging
-from typing import Optional
-import mss
+import socket
 import time
+import zipfile
+from base64 import b64encode
+from datetime import datetime
+from typing import Any, List, Optional
 
+import mss
+import psutil
+from tqdm import tqdm
 from varc_core.utils.string_manips import remove_special_characters, strip_drive
+
+try:
+    import yara
+    _YARA_AVAILABLE = True
+
+except ImportError:
+    _YARA_AVAILABLE = False
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
@@ -44,26 +52,43 @@ class BaseSystem:
             include_memory: bool = True,
             include_open: bool = True,
             extract_dumps: bool = False,
+            yara_file: Optional[str] = None
     ) -> None:
         self.todays_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
         self.timestamp = datetime.timestamp(datetime.now())
         self.process_name = process_name
         self.process_id = process_id
-        self.extract_dumps = extract_dumps
         self.include_memory = include_memory
         self.include_open = include_open
         self.screenshot = take_screenshot
+        self.extract_dumps = extract_dumps
+        self.yara_file = yara_file
+        self.yara_results: List[dict] = []
+        self.yara_hit_pids: List[int] = []
 
         if self.process_name and self.process_id:
             raise ValueError(
                 "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
         self.zip_path = self.acquire_volatile()
 
+        if self.yara_file:
+            if not _YARA_AVAILABLE:
+                logging.error("YARA not available. yara-python is required and is either not installed or not functioning correctly.")
+            else:
+                try:
+                    yara_rules = yara.load(self.yara_file)
+                    self.yara_rules = yara_rules
+                except:
+                    logging.error("Unable to load YARA rules.")
+
+        if self.yara_file and not self.include_memory and _YARA_AVAILABLE:
+            logging.info("YARA hits will be recorded only since include_memory is not selected.")
+
     def get_network(self) -> List[str]:
         """Get active network connections
             
-        :return: List of netsta logs
+        :return: List of netstat logs
         :rtype List[string]
         """
         network = []
@@ -188,6 +213,43 @@ class BaseSystem:
         """
         table_dict = {"format": "CadoJsonTable", "rows": rows}
         return json.dumps(table_dict, sort_keys=False, indent=1)
+    
+    # match argument of type yara.Match
+    def yara_hit_readable(self, match: Any) -> dict:
+        matches: bool = match['matches']
+        rule: str = match['rule']
+        namespace: str = match['namespace']
+        tags: List[str] = match['tags']
+        meta: dict = match['meta']
+        pid: int = match['pid']
+        proc_name: str = match['proc_name']
+        y_strings = match['strings']
+        
+        hits: List[dict] = []
+        for y_hit in y_strings:
+            identifier: str = y_hit.identifier
+            instances = y_hit.instances
+            for inst in instances:
+                hit = {
+                    'matches': matches,
+                    'identifier': identifier,
+                    'matched_data_b64': b64encode(inst.matched_data).decode('utf-8'),
+                    'matched_length': inst.matched_length,
+                    'offset': inst.offset,
+                    'xor_key': inst.xor_key,
+                    'plaintext': inst.plaintext().decode('utf-8')
+                }
+                hits.append(hit)
+        result = {
+            'rule': rule,
+            'namespace': namespace,
+            'tags': tags,
+            'meta': meta,
+            'pid' : pid,
+            'proc_name': proc_name,
+            'hits': hits
+        }
+        return result
 
     def get_machine_name(self) -> str:
         """Return machine name without any special characters removed
@@ -258,3 +320,40 @@ class BaseSystem:
                         logging.warning(f"Could not open {file_path} for reading")
 
         return archive_out
+
+
+    def yara_scan(self) -> None:
+        def yara_hit_callback(hit: dict) -> Any:
+            self.yara_results.append(hit)
+            if self.include_memory:
+                logging.info(f"YARA rule {hit['rule']} triggered. Process will be dumped.")
+            else:
+                logging.info(f"YARA rule {hit['rule']} was triggered.")
+            return yara.CALLBACK_CONTINUE
+        
+        if not _YARA_AVAILABLE:
+            return None
+
+        archive_out = self.output_path
+        for proc in tqdm(self.process_info, desc="YARA scan progess", unit=" procs"):
+            pid = proc["Process ID"]
+            p_name = proc["Name"]
+            logging.info(f"Scanning pid {pid} with YARA")
+            try:
+                matches = self.yara_rules.match(pid=pid, callback=yara_hit_callback, which_callbacks=yara.CALLBACK_MATCHES, timeout=30)
+                if matches:
+                    self.yara_hit_pids.append(pid)
+                    self.yara_results[-1]['pid'] = pid
+                    self.yara_results[-1]['proc_name'] = p_name
+            except Exception as yerr:
+                logging.error(f"Error scanning process with YARA: {yerr}")
+            
+        if self.yara_results:
+            combined_yara_results = []
+            for yara_hit in self.yara_results:
+                combined_yara_results.append(self.yara_hit_readable(yara_hit))
+            with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr("yara_results.json", self.dict_to_json(combined_yara_results))
+                logging.info("YARA scan results written to yara_results.json in output archive.")
+        else:
+            logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
