@@ -10,6 +10,7 @@ It creates a zip, which contains a number of different pieces of data to underst
 - Memory of running proccesses, on a per-process basis. This is also carved to extract log and text data from memory
 - Netstat data of active connections
 - The contents of open files, for example running binaries
+- Details of which processes triggered a provided compiled YARA rule file
 
 We have successfully executed it across:
 - Windows
