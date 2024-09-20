@@ -7,17 +7,20 @@ Try to keep functions working cross-platform where possible
 If it can't work cross-platform, put any platform specific code in the class that inherits this base
     e.g. In linux.py
 """
+import io
 import json
 import logging
 import os
 import os.path
 import socket
+import tarfile
 import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
 from typing import Any, List, Optional
 
+import lz4.frame
 import mss
 import psutil
 from tqdm import tqdm
@@ -292,14 +295,14 @@ class BaseSystem:
         else:
             screenshot_image = None
 
-        with zipfile.ZipFile(self.output_path, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+        with self._open_output() as output_file:
             if screenshot_image:
-                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
+                output_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
             for key, value in table_data.items():
-                zip_file.writestr(f"{key}.json", value.encode())
+                output_file.writestr(f"{key}.json", value.encode())
             if self.network_log:
                 logging.info("Adding Netstat Data")
-                zip_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
+                output_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
             if self.include_open and self.dumped_files:
                 for file_path in self.dumped_files:
                     logging.info(f"Adding open file {file_path}")
@@ -308,12 +311,17 @@ class BaseSystem:
                             logging.warning(f"Skipping file as too large {file_path}")
                         else:
                             try:
-                                zip_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
+                                output_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
                             except PermissionError:
                                 logging.warn(f"Permission denied copying {file_path}")
                     except FileNotFoundError:
                         logging.warning(f"Could not open {file_path} for reading")
 
+    def _open_output(self) -> zipfile.ZipFile | "_TarLz4Wrapper":
+        if self.output_path.endswith('.tar.lz4'):
+            return _TarLz4Wrapper(self.output_path)
+        else:
+            return zipfile.ZipFile(self.output_path, 'a', compression=zipfile.ZIP_DEFLATED)
 
     def yara_scan(self) -> None:
         def yara_hit_callback(hit: dict) -> Any:
@@ -350,3 +358,25 @@ class BaseSystem:
                 logging.info("YARA scan results written to yara_results.json in output archive.")
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
+
+
+class _TarLz4Wrapper:
+
+    def __init__(self, path) -> None:
+        self._lz4 = lz4.frame.open(path, 'wb')
+        self._tar = tarfile.open(fileobj=self._lz4f, mode="w")
+
+    def writestr(self, path: str, value: str | bytes):
+        info = tarfile.TarInfo(path)
+        info.size = len(value)
+        self._tar.addfile(info, io.BytesIO(value))
+
+    def write(self, path: str, arcname: str):
+        self._tar.add(path, arcname)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._tar.close()
+        self._lz4.close()
