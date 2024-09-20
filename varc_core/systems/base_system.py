@@ -18,7 +18,7 @@ import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import IO, Any, List, Optional, Union
 
 import lz4.frame
 import mss
@@ -40,12 +40,12 @@ class _TarLz4Wrapper:
 
     def __init__(self, path) -> None:
         self._lz4 = lz4.frame.open(path, 'wb')
-        self._tar = tarfile.open(fileobj=self._lz4f, mode="w")
+        self._tar = tarfile.open(fileobj=self._lz4, mode="w")
 
-    def writestr(self, path: str, value: str | bytes):
+    def writestr(self, path: str, value: Union[str, bytes]):
         info = tarfile.TarInfo(path)
         info.size = len(value)
-        self._tar.addfile(info, io.BytesIO(value))
+        self._tar.addfile(info, io.BytesIO(value if isinstance(value, bytes) else value.encode()))
 
     def write(self, path: str, arcname: str):
         self._tar.add(path, arcname)
@@ -339,7 +339,7 @@ class BaseSystem:
                     except FileNotFoundError:
                         logging.warning(f"Could not open {file_path} for reading")
 
-    def _open_output(self) -> zipfile.ZipFile | _TarLz4Wrapper:
+    def _open_output(self) -> Union[zipfile.ZipFile, _TarLz4Wrapper]:
         if self.output_path.endswith('.tar.lz4'):
             return _TarLz4Wrapper(self.output_path)
         else:
