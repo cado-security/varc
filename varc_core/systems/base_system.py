@@ -7,17 +7,20 @@ Try to keep functions working cross-platform where possible
 If it can't work cross-platform, put any platform specific code in the class that inherits this base
     e.g. In linux.py
 """
+import io
 import json
 import logging
 import os
 import os.path
 import socket
+import tarfile
 import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
+import lz4.frame  # type: ignore
 import mss
 import psutil
 from tqdm import tqdm
@@ -31,6 +34,28 @@ except ImportError:
     _YARA_AVAILABLE = False
 
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
+
+
+class _TarLz4Wrapper:
+
+    def __init__(self, path: str) -> None:
+        self._lz4 = lz4.frame.open(path, 'wb')
+        self._tar = tarfile.open(fileobj=self._lz4, mode="w")
+
+    def writestr(self, path: str, value: Union[str, bytes]) -> None:
+        info = tarfile.TarInfo(path)
+        info.size = len(value)
+        self._tar.addfile(info, io.BytesIO(value if isinstance(value, bytes) else value.encode()))
+
+    def write(self, path: str, arcname: str) -> None:
+        self._tar.add(path, arcname)
+
+    def __enter__(self) -> "_TarLz4Wrapper":
+        return self
+
+    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
+        self._tar.close()
+        self._lz4.close()
 
 
 class BaseSystem:
@@ -52,7 +77,8 @@ class BaseSystem:
             include_memory: bool = True,
             include_open: bool = True,
             extract_dumps: bool = False,
-            yara_file: Optional[str] = None
+            yara_file: Optional[str] = None,
+            output_path: Optional[str] = None
     ) -> None:
         self.todays_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
@@ -66,11 +92,13 @@ class BaseSystem:
         self.yara_file = yara_file
         self.yara_results: List[dict] = []
         self.yara_hit_pids: List[int] = []
+        self.output_path = output_path or os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
 
         if self.process_name and self.process_id:
             raise ValueError(
                 "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
-        self.zip_path = self.acquire_volatile()
+        
+        self.acquire_volatile()
 
         if self.yara_file:
             if not _YARA_AVAILABLE:
@@ -273,11 +301,9 @@ class BaseSystem:
             logging.error("Unable to take screenshot")
         return None
 
-    def acquire_volatile(self, output_path: Optional[str] = None) -> str:
+    def acquire_volatile(self) -> None:
         """Acquire volatile data into a zip file
         This is called by all OS's
-
-        :return: The filepath of the zip
         """
         self.process_info = self.get_processes()
         self.network_log = self.get_network()
@@ -290,21 +316,15 @@ class BaseSystem:
             screenshot_image = self.take_screenshot()
         else:
             screenshot_image = None
-        if not output_path:
-            output_path = os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
-        # strip .zip if in filename as shutil appends to end
-        archive_out = output_path + ".zip" if not output_path.endswith(".zip") else output_path
-        self.output_path = output_path
-        with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+
+        with self._open_output() as output_file:
             if screenshot_image:
-                zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
+                output_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
             for key, value in table_data.items():
-                with zip_file.open(f"{key}.json", 'w') as json_file:
-                    json_file.write(value.encode())
+                output_file.writestr(f"{key}.json", value.encode())
             if self.network_log:
                 logging.info("Adding Netstat Data")
-                with zip_file.open("netstat.log", 'w') as network_file:
-                    network_file.write("\r\n".join(self.network_log).encode())
+                output_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
             if self.include_open and self.dumped_files:
                 for file_path in self.dumped_files:
                     logging.info(f"Adding open file {file_path}")
@@ -313,14 +333,17 @@ class BaseSystem:
                             logging.warning(f"Skipping file as too large {file_path}")
                         else:
                             try:
-                                zip_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
+                                output_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
                             except PermissionError:
                                 logging.warn(f"Permission denied copying {file_path}")
                     except FileNotFoundError:
                         logging.warning(f"Could not open {file_path} for reading")
 
-        return archive_out
-
+    def _open_output(self) -> Union[zipfile.ZipFile, _TarLz4Wrapper]:
+        if self.output_path.endswith('.tar.lz4'):
+            return _TarLz4Wrapper(self.output_path)
+        else:
+            return zipfile.ZipFile(self.output_path, 'a', compression=zipfile.ZIP_DEFLATED)
 
     def yara_scan(self) -> None:
         def yara_hit_callback(hit: dict) -> Any:
@@ -357,3 +380,4 @@ class BaseSystem:
                 logging.info("YARA scan results written to yara_results.json in output archive.")
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
+

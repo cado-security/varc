@@ -8,12 +8,11 @@ from varc_core.systems import BaseSystem
 
 class TestImport(unittest.TestCase):
     system: BaseSystem
-    zip_path: str
 
     @classmethod
     def setUpClass(cls) -> None:
         cls.system = acquire_system()
-        cls.zip_path = cls.system.acquire_volatile()
+        cls.system.acquire_volatile()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -29,5 +28,5 @@ class TestImport(unittest.TestCase):
 
     def test_got_files(self) -> None:
         # Check we got atleast 10 files
-        with ZipFile(self.zip_path) as z:
+        with ZipFile(self.system.output_path) as z:
             self.assertGreater(len(z.namelist()), 10)
