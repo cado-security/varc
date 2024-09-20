@@ -296,12 +296,10 @@ class BaseSystem:
             if screenshot_image:
                 zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
             for key, value in table_data.items():
-                with zip_file.open(f"{key}.json", 'w') as json_file:
-                    json_file.write(value.encode())
+                zip_file.writestr(f"{key}.json", value.encode())
             if self.network_log:
                 logging.info("Adding Netstat Data")
-                with zip_file.open("netstat.log", 'w') as network_file:
-                    network_file.write("\r\n".join(self.network_log).encode())
+                zip_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
             if self.include_open and self.dumped_files:
                 for file_path in self.dumped_files:
                     logging.info(f"Adding open file {file_path}")
