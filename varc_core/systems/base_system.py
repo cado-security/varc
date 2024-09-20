@@ -52,7 +52,8 @@ class BaseSystem:
             include_memory: bool = True,
             include_open: bool = True,
             extract_dumps: bool = False,
-            yara_file: Optional[str] = None
+            yara_file: Optional[str] = None,
+            output_path: Optional[str] = None
     ) -> None:
         self.todays_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         logging.info(f'Acquiring system: {self.get_machine_name()}, at {self.todays_date}')
@@ -66,11 +67,13 @@ class BaseSystem:
         self.yara_file = yara_file
         self.yara_results: List[dict] = []
         self.yara_hit_pids: List[int] = []
+        self.output_path = output_path or os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
 
         if self.process_name and self.process_id:
             raise ValueError(
                 "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
-        self.zip_path = self.acquire_volatile()
+        
+        self.acquire_volatile()
 
         if self.yara_file:
             if not _YARA_AVAILABLE:
@@ -273,11 +276,9 @@ class BaseSystem:
             logging.error("Unable to take screenshot")
         return None
 
-    def acquire_volatile(self, output_path: Optional[str] = None) -> str:
+    def acquire_volatile(self) -> None:
         """Acquire volatile data into a zip file
         This is called by all OS's
-
-        :return: The filepath of the zip
         """
         self.process_info = self.get_processes()
         self.network_log = self.get_network()
@@ -290,12 +291,8 @@ class BaseSystem:
             screenshot_image = self.take_screenshot()
         else:
             screenshot_image = None
-        if not output_path:
-            output_path = os.path.join("", f"{self.get_machine_name()}-{self.timestamp}.zip")
-        # strip .zip if in filename as shutil appends to end
-        archive_out = output_path + ".zip" if not output_path.endswith(".zip") else output_path
-        self.output_path = output_path
-        with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
+
+        with zipfile.ZipFile(self.output_path, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
             if screenshot_image:
                 zip_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
             for key, value in table_data.items():
@@ -318,8 +315,6 @@ class BaseSystem:
                                 logging.warn(f"Permission denied copying {file_path}")
                     except FileNotFoundError:
                         logging.warning(f"Could not open {file_path} for reading")
-
-        return archive_out
 
 
     def yara_scan(self) -> None:
