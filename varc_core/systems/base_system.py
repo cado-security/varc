@@ -36,6 +36,28 @@ except ImportError:
 _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
 
+class _TarLz4Wrapper:
+
+    def __init__(self, path) -> None:
+        self._lz4 = lz4.frame.open(path, 'wb')
+        self._tar = tarfile.open(fileobj=self._lz4f, mode="w")
+
+    def writestr(self, path: str, value: str | bytes):
+        info = tarfile.TarInfo(path)
+        info.size = len(value)
+        self._tar.addfile(info, io.BytesIO(value))
+
+    def write(self, path: str, arcname: str):
+        self._tar.add(path, arcname)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self._tar.close()
+        self._lz4.close()
+
+
 class BaseSystem:
     """A 
 
@@ -317,7 +339,7 @@ class BaseSystem:
                     except FileNotFoundError:
                         logging.warning(f"Could not open {file_path} for reading")
 
-    def _open_output(self) -> zipfile.ZipFile | "_TarLz4Wrapper":
+    def _open_output(self) -> zipfile.ZipFile | _TarLz4Wrapper:
         if self.output_path.endswith('.tar.lz4'):
             return _TarLz4Wrapper(self.output_path)
         else:
@@ -359,24 +381,3 @@ class BaseSystem:
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
 
-
-class _TarLz4Wrapper:
-
-    def __init__(self, path) -> None:
-        self._lz4 = lz4.frame.open(path, 'wb')
-        self._tar = tarfile.open(fileobj=self._lz4f, mode="w")
-
-    def writestr(self, path: str, value: str | bytes):
-        info = tarfile.TarInfo(path)
-        info.size = len(value)
-        self._tar.addfile(info, io.BytesIO(value))
-
-    def write(self, path: str, arcname: str):
-        self._tar.add(path, arcname)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, traceback):
-        self._tar.close()
-        self._lz4.close()
