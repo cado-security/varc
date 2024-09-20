@@ -18,9 +18,9 @@ import time
 import zipfile
 from base64 import b64encode
 from datetime import datetime
-from typing import IO, Any, List, Optional, Union
+from typing import Any, List, Optional, Union
 
-import lz4.frame
+import lz4.frame  # type: ignore
 import mss
 import psutil
 from tqdm import tqdm
@@ -38,22 +38,22 @@ _MAX_OPEN_FILE_SIZE = 10000000  # 10 Mb max dumped filesize
 
 class _TarLz4Wrapper:
 
-    def __init__(self, path) -> None:
+    def __init__(self, path: str) -> None:
         self._lz4 = lz4.frame.open(path, 'wb')
         self._tar = tarfile.open(fileobj=self._lz4, mode="w")
 
-    def writestr(self, path: str, value: Union[str, bytes]):
+    def writestr(self, path: str, value: Union[str, bytes]) -> None:
         info = tarfile.TarInfo(path)
         info.size = len(value)
         self._tar.addfile(info, io.BytesIO(value if isinstance(value, bytes) else value.encode()))
 
-    def write(self, path: str, arcname: str):
+    def write(self, path: str, arcname: str) -> None:
         self._tar.add(path, arcname)
 
-    def __enter__(self):
+    def __enter__(self) -> "_TarLz4Wrapper":
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
         self._tar.close()
         self._lz4.close()
 
