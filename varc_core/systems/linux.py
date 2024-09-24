@@ -36,6 +36,16 @@ _MAX_VIRTUAL_PAGE_CHUNK = 256 * 1000**2 # max number of megabytes that will be r
 
 class LinuxSystem(BaseSystem):
 
+    def __init__(
+        self,
+        include_memory: bool,
+        include_open: bool,
+        extract_dumps: bool,
+        yara_file: Optional[str],
+        **kwargs: Any
+    ) -> None:
+        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, yara_file=yara_file, **kwargs)
+
     def parse_mem_map(self, pid: int, p_name: str) -> List[Tuple[int, int]]:
         """Returns a list of (start address, end address) tuples of the regions of process memory that are mapped
         

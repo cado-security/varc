@@ -18,6 +18,16 @@ if platform == "win32": # dont try to import on linux
 
 class WindowsSystem(BaseSystem):
 
+    def __init__(
+        self,
+        include_memory: bool,
+        include_open: bool,
+        extract_dumps: bool,
+        yara_file: Optional[str],
+        **kwargs: Any
+    ) -> None:
+        super().__init__(include_memory=include_memory, include_open=include_open, extract_dumps=extract_dumps, yara_file=yara_file, **kwargs)
+
     def read_process(self, handle: int, address: int) -> Tuple[Optional[bytes], int]:
         """ Read a process. Based on pymems pattern module
 
