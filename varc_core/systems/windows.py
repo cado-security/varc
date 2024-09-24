@@ -5,10 +5,10 @@ from os import remove as del_file
 from os import sep
 from pathlib import Path
 from sys import platform
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 
 from tqdm import tqdm
-from varc_core.systems.base_system import BaseSystem
+from varc_core.systems.base_system import _TarLz4Wrapper, BaseSystem
 
 if platform == "win32": # dont try to import on linux
    from sys import maxsize
@@ -45,11 +45,10 @@ class WindowsSystem(BaseSystem):
             logging.warning("Failed to read a memory page")
         return page_bytes, next_region
     
-    def dump_processes(self) -> None:
+    def dump_processes(self, output_file: Union[zipfile.ZipFile, _TarLz4Wrapper]) -> None:
         """
         Based on pymem's 'Pattern' module
         """
-        archive_out = self.output_path
         for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
             # If scanning with YARA, only dump processes if they triggered a rule
             if self.yara_hit_pids:
@@ -74,12 +73,11 @@ class WindowsSystem(BaseSystem):
             
             # Dump all pages the process virtual address space
             next_region = 0
-            with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
-                with tempfile.NamedTemporaryFile(mode="w+b", buffering=0, delete=False) as tmpfile:
-                    while next_region < user_space_limit:
-                        proc_page_bytes, next_region = self.read_process(p.process_handle, next_region)
-                        if proc_page_bytes:
-                            tmpfile.write(proc_page_bytes)
-                    zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
-                del_file(tmpfile.name)
+            with tempfile.NamedTemporaryFile(mode="w+b", buffering=0, delete=False) as tmpfile:
+                while next_region < user_space_limit:
+                    proc_page_bytes, next_region = self.read_process(p.process_handle, next_region)
+                    if proc_page_bytes:
+                        tmpfile.write(proc_page_bytes)
+                output_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
+            del_file(tmpfile.name)
         logging.info(f"Dumping processing has completed. Output file is located: {archive_out}")

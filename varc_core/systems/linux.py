@@ -5,10 +5,10 @@ import zipfile
 from os import getpid, sep
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 
 from tqdm import tqdm
-from varc_core.systems.base_system import BaseSystem
+from varc_core.systems.base_system import _TarLz4Wrapper, BaseSystem
 
 # based on https://stackoverflow.com/questions/48897687/why-does-the-syscall-process-vm-readv-sets-errno-to-success and PymemLinux library
 
@@ -83,51 +83,49 @@ class LinuxSystem(BaseSystem):
 
         return buff.raw
 
-    def dump_processes(self) -> None:
+    def dump_processes(self, output_file: Union[zipfile.ZipFile, _TarLz4Wrapper]) -> None:
         """Dumps all processes to temp files, adds temp file to output archive then removes the temp file"""
-        archive_out = self.output_path
         own_pid = getpid()
-        with zipfile.ZipFile(archive_out, "a", compression=zipfile.ZIP_DEFLATED) as zip_file:
-            try:
-                for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
-                    # If scanning with YARA, only dump processes if they triggered a rule
-                    if self.yara_hit_pids:
-                        if proc["Process ID"] not in self.yara_hit_pids or proc["Process ID"] == own_pid:
-                            continue
-                    pid = proc["Process ID"]
-                    p_name = proc["Name"]
-                    maps = self.parse_mem_map(pid, p_name)
-                    if not maps:
+        try:
+            for proc in tqdm(self.process_info, desc="Process dump progess", unit=" procs"):
+                # If scanning with YARA, only dump processes if they triggered a rule
+                if self.yara_hit_pids:
+                    if proc["Process ID"] not in self.yara_hit_pids or proc["Process ID"] == own_pid:
                         continue
-                    with NamedTemporaryFile(mode="w+b", buffering=0, delete=True) as tmpfile:
-                        try:
-                            for map in maps:
-                                page_start = map[0]
-                                page_len = map[1] - map[0]
-                                if page_len > _MAX_VIRTUAL_PAGE_CHUNK:
-                                    sub_chunk_count, final_chunk_size = divmod(page_len, _MAX_VIRTUAL_PAGE_CHUNK)
-                                    page_len = int(page_len / sub_chunk_count)
-                                    for sc in range(0, sub_chunk_count):
-                                        mem_page_content = self.read_bytes(pid, page_start, page_len)
-                                        if mem_page_content:
-                                            tmpfile.write(mem_page_content)
-                                        page_start = page_start + _MAX_VIRTUAL_PAGE_CHUNK
-                                    mem_page_content = self.read_bytes(pid, page_start, final_chunk_size)
-                                    if mem_page_content:
-                                        tmpfile.write(mem_page_content)
-                                else:
+                pid = proc["Process ID"]
+                p_name = proc["Name"]
+                maps = self.parse_mem_map(pid, p_name)
+                if not maps:
+                    continue
+                with NamedTemporaryFile(mode="w+b", buffering=0, delete=True) as tmpfile:
+                    try:
+                        for map in maps:
+                            page_start = map[0]
+                            page_len = map[1] - map[0]
+                            if page_len > _MAX_VIRTUAL_PAGE_CHUNK:
+                                sub_chunk_count, final_chunk_size = divmod(page_len, _MAX_VIRTUAL_PAGE_CHUNK)
+                                page_len = int(page_len / sub_chunk_count)
+                                for sc in range(0, sub_chunk_count):
                                     mem_page_content = self.read_bytes(pid, page_start, page_len)
                                     if mem_page_content:
                                         tmpfile.write(mem_page_content)
-                            zip_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
-                        except PermissionError:
-                            logging.warning(f"Permission denied opening process memory for {p_name} (pid {pid}). Cannot dump this process.")
-                            continue
-                        except OSError as oserror:
-                            logging.warning(f"Error opening process memory page for {p_name} (pid {pid}). Error was {oserror}. Dump may be incomplete.")
-                            pass
-            except MemoryError:
-                logging.warning("Exceeded available memory, skipping further memory collection")
+                                    page_start = page_start + _MAX_VIRTUAL_PAGE_CHUNK
+                                mem_page_content = self.read_bytes(pid, page_start, final_chunk_size)
+                                if mem_page_content:
+                                    tmpfile.write(mem_page_content)
+                            else:
+                                mem_page_content = self.read_bytes(pid, page_start, page_len)
+                                if mem_page_content:
+                                    tmpfile.write(mem_page_content)
+                        output_file.write(tmpfile.name, f"process_dumps{sep}{p_name}_{pid}.mem")
+                    except PermissionError:
+                        logging.warning(f"Permission denied opening process memory for {p_name} (pid {pid}). Cannot dump this process.")
+                        continue
+                    except OSError as oserror:
+                        logging.warning(f"Error opening process memory page for {p_name} (pid {pid}). Error was {oserror}. Dump may be incomplete.")
+                        pass
+        except MemoryError:
+            logging.warning("Exceeded available memory, skipping further memory collection")
                         
 
         logging.info(f"Dumping processing has completed. Output file is located: {archive_out}")
