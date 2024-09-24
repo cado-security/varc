@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import os.path
+from pathlib import Path
 import socket
 import tarfile
 import time
@@ -112,6 +113,15 @@ class BaseSystem:
 
         if self.yara_file and not self.include_memory and _YARA_AVAILABLE:
             logging.info("YARA hits will be recorded only since include_memory is not selected.")
+
+        if self.include_memory:
+            if self.yara_file:
+                self.yara_scan()
+            self.dump_processes()
+
+            if self.extract_dumps:
+                from varc_core.utils import dumpfile_extraction
+                dumpfile_extraction.extract_dumps(Path(self.output_path))
 
     def get_network(self) -> List[str]:
         """Get active network connections
@@ -381,3 +391,5 @@ class BaseSystem:
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
 
+    def dump_processes(self) -> None:
+        raise NotImplementedError()
