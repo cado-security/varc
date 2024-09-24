@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import os.path
+from pathlib import Path
 import socket
 import tarfile
 import time
@@ -98,8 +99,6 @@ class BaseSystem:
             raise ValueError(
                 "Only one of Process name or Process ID (PID) can be used. Please re-run using one or the other.")
         
-        self.acquire_volatile()
-
         if self.yara_file:
             if not _YARA_AVAILABLE:
                 logging.error("YARA not available. yara-python is required and is either not installed or not functioning correctly.")
@@ -112,6 +111,21 @@ class BaseSystem:
 
         if self.yara_file and not self.include_memory and _YARA_AVAILABLE:
             logging.info("YARA hits will be recorded only since include_memory is not selected.")
+        
+        with self._open_output() as output:
+           
+            self.acquire_volatile(output)
+
+            if self.include_memory:
+                if self.yara_file:
+                    self.yara_scan(output)
+                self.dump_processes(output)
+
+        if self.extract_dumps:
+            if not self.output_path.endswith('.zip'):
+                logging.warning('extract_dumps only supported with zip output')
+            from varc_core.utils import dumpfile_extraction
+            dumpfile_extraction.extract_dumps(Path(self.output_path))
 
     def get_network(self) -> List[str]:
         """Get active network connections
@@ -301,7 +315,7 @@ class BaseSystem:
             logging.error("Unable to take screenshot")
         return None
 
-    def acquire_volatile(self) -> None:
+    def acquire_volatile(self, output_file: Union[zipfile.ZipFile, _TarLz4Wrapper]) -> None:
         """Acquire volatile data into a zip file
         This is called by all OS's
         """
@@ -317,27 +331,26 @@ class BaseSystem:
         else:
             screenshot_image = None
 
-        with self._open_output() as output_file:
-            if screenshot_image:
-                output_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
-            for key, value in table_data.items():
-                output_file.writestr(f"{key}.json", value.encode())
-            if self.network_log:
-                logging.info("Adding Netstat Data")
-                output_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
-            if self.include_open and self.dumped_files:
-                for file_path in self.dumped_files:
-                    logging.info(f"Adding open file {file_path}")
-                    try:
-                        if os.path.getsize(file_path) > _MAX_OPEN_FILE_SIZE:
-                            logging.warning(f"Skipping file as too large {file_path}")
-                        else:
-                            try:
-                                output_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
-                            except PermissionError:
-                                logging.warn(f"Permission denied copying {file_path}")
-                    except FileNotFoundError:
-                        logging.warning(f"Could not open {file_path} for reading")
+        if screenshot_image:
+            output_file.writestr(f"{self.get_machine_name()}-{self.timestamp}.png", screenshot_image)
+        for key, value in table_data.items():
+            output_file.writestr(f"{key}.json", value.encode())
+        if self.network_log:
+            logging.info("Adding Netstat Data")
+            output_file.writestr("netstat.log", "\r\n".join(self.network_log).encode())
+        if self.include_open and self.dumped_files:
+            for file_path in self.dumped_files:
+                logging.info(f"Adding open file {file_path}")
+                try:
+                    if os.path.getsize(file_path) > _MAX_OPEN_FILE_SIZE:
+                        logging.warning(f"Skipping file as too large {file_path}")
+                    else:
+                        try:
+                            output_file.write(file_path, strip_drive(f"./collected_files/{file_path}"))
+                        except PermissionError:
+                            logging.warn(f"Permission denied copying {file_path}")
+                except FileNotFoundError:
+                    logging.warning(f"Could not open {file_path} for reading")
 
     def _open_output(self) -> Union[zipfile.ZipFile, _TarLz4Wrapper]:
         if self.output_path.endswith('.tar.lz4'):
@@ -345,7 +358,7 @@ class BaseSystem:
         else:
             return zipfile.ZipFile(self.output_path, 'a', compression=zipfile.ZIP_DEFLATED)
 
-    def yara_scan(self) -> None:
+    def yara_scan(self, output_file: Union[zipfile.ZipFile, _TarLz4Wrapper]) -> None:
         def yara_hit_callback(hit: dict) -> Any:
             self.yara_results.append(hit)
             if self.include_memory:
@@ -357,7 +370,6 @@ class BaseSystem:
         if not _YARA_AVAILABLE:
             return None
 
-        archive_out = self.output_path
         for proc in tqdm(self.process_info, desc="YARA scan progess", unit=" procs"):
             pid = proc["Process ID"]
             p_name = proc["Name"]
@@ -375,9 +387,11 @@ class BaseSystem:
             combined_yara_results = []
             for yara_hit in self.yara_results:
                 combined_yara_results.append(self.yara_hit_readable(yara_hit))
-            with zipfile.ZipFile(archive_out, 'a', compression=zipfile.ZIP_DEFLATED) as zip_file:
-                zip_file.writestr("yara_results.json", self.dict_to_json(combined_yara_results))
-                logging.info("YARA scan results written to yara_results.json in output archive.")
+                
+            output_file.writestr("yara_results.json", self.dict_to_json(combined_yara_results))
+            logging.info("YARA scan results written to yara_results.json in output archive.")
         else:
             logging.info("No YARA rules were triggered. Nothing will be written to the output archive.")
 
+    def dump_processes(self, output_file: Union[zipfile.ZipFile, _TarLz4Wrapper]) -> None:
+        raise NotImplementedError()
